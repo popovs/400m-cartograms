@@ -55,6 +55,16 @@ set_wd()
 #  install.packages("stringr", repos = "http://cran.stat.sfu.ca/")
 #  require(stringr)
 #}
+#if (!require(cartogram)) {
+#  install.packages("cartogram", repos = "http://cran.stat.sfu.ca/")
+#  require(cartogram)
+#}
+#if(!require(viridis)) {
+#  install.packages("viridis", repos="http://cran.stat.sfu.ca/")
+#  require(viridis)
+#}
+
+
 if (!require(ggplot2)) {
   install.packages("ggplot2", repos = "http://cran.stat.sfu.ca/")
   require(ggplot2)
@@ -67,16 +77,29 @@ if (!require(cartogram)) {
   install.packages("cartogram", repos = "http://cran.stat.sfu.ca/")
   require(cartogram)
 }
-#if(!require(viridis)) {
-#  install.packages("viridis", repos="http://cran.stat.sfu.ca/")
-#  require(viridis)
-#}
+
+# FIRST, DOWNLOAD THE LATEST FFTW (Fast Fourier Transform) PACKAGE. The next two GitHub cartogram packages will NOT install without these binaries. http://www.fftw.org/download.html 
+
+# Also install the R package "fftw": 
+if (!require(fftw)) {
+  install.packages("fftw", repos = "http://cran.stat.sfu.ca/")
+  require(fftw) # fast Fourier transform
+}
+
+# Install & load devtools in order to use GitHub packages
+if (!require(devtools)) {
+  install.packages("devtools", repos = "http://cran.stat.sfu.ca/")
+  require(devtools)
+}
+install_github('omegahat/Rcartogram')
+# Wait for installation, and then:
+install_github('chrisbrunsdon/getcartr', subdir='getcartr')
 
 # ----------------
 # 02 CSV READ AND DATAFRAME CREATION
 # ----------------
 
-fishing_data <- read.csv('FAOSAU_400m_country_gis.csv')
+fishing_data <- read.csv('FAOSAU_400m_country_gis.csv', stringsAsFactors = F)
 
 c1950 <- fishing_data[fishing_data$Year==1950,]
 c1970 <- fishing_data[fishing_data$Year==1970,]
@@ -130,6 +153,7 @@ p1950 <- ggplot() +
 plot(p1950)
 
 
+#carto1950 <- quick.carto(map_data_1950, )
 
+#cartogram(map_data_1950, "Catch", itermax=5)
 
-cartogram(map_data_1950, "Catch", itermax=5)

@@ -1,8 +1,9 @@
 # 400m Cartograms
 # Deep water fisheries manuscript
-# This Datacarpentry workshop is overall super helpful: http://www.datacarpentry.org/R-spatial-raster-vector-lesson/ 
 
-
+# 01 This Datacarpentry workshop is overall super helpful for any R GIS: http://www.datacarpentry.org/R-spatial-raster-vector-lesson/ 
+# 02 This GitHub.io page goes through basic vector/shapefile plotting: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+# 03 Plotting cartograms using R: http://trucvietle.me/r/tutorial/2016/12/18/cartogram-plotting-using-r.html 
 
 
 # ----------------
@@ -58,7 +59,14 @@ if (!require(ggplot2)) {
   install.packages("ggplot2", repos = "http://cran.stat.sfu.ca/")
   require(ggplot2)
 }
-
+if (!require(dplyr)) {
+  install.packages("dplyr", repos = "http://cran.stat.sfu.ca/")
+  require(dplyr)
+}
+if (!require(cartogram)) {
+  install.packages("cartogram", repos = "http://cran.stat.sfu.ca/")
+  require(cartogram)
+}
 #if(!require(viridis)) {
 #  install.packages("viridis", repos="http://cran.stat.sfu.ca/")
 #  require(viridis)
@@ -89,29 +97,39 @@ map_data_1970 <- merge(countries, c1970, by="Country", all=TRUE)
 map_data_1990 <- merge(countries, c1990, by="Country", all=TRUE)
 map_data_2014 <- merge(countries, c2014, by="Country", all=TRUE)
 
-# Fill all NAs with zeros
-#map_data_1950[is.na(map_data_1950)] <- 0
-#map_data_1970[is.na(map_data_1970)] <- 0
-#map_data_1990[is.na(map_data_1990)] <- 0
-#map_data_2014[is.na(map_data_2014)] <- 0
+# Reorder the map data back into the correct order (merging messes that up)
+map_data_1950 <- arrange(map_data_1950, order)
+map_data_1970 <- arrange(map_data_1970, order)
+map_data_1990 <- arrange(map_data_1990, order)
+map_data_2014 <- arrange(map_data_2014, order)
 
-mapp <- ggplot() + 
+
+# ----------------
+# 04 PLOT
+# ----------------
+
+p1950 <- ggplot() + 
   # countries
   geom_polygon(data = map_data_1950, aes(
                                   fill = Catch,
                                   x = long, 
                                   y = lat,
                                   group = group
-                                  ), inherit.aes = FALSE
-               ) 
-
-#+
+                                  )
+               ) +
+  # constrain proportions
+  coord_fixed() +
   # countries outlines
-  #geom_path(data = countries, aes(
-  #                                x = long,
-  #                                y = lat,
-  #                                group = group),
-  #          color = "white", size = 0.1
-  #          )
+  geom_path(data = countries, aes(
+                                  x = long,
+                                  y = lat,
+                                  group = group),
+            color = "white", size = 0.01
+            )
 
-plot(mapp)
+plot(p1950)
+
+
+
+
+cartogram(map_data_1950, "Catch", itermax=5)

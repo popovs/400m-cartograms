@@ -80,7 +80,7 @@ c2014 <- fishing_data[fishing_data$Year==2014,]
 # ----------------
 
 countries <- map_data("world")
-countries <- countries[countries$region!='Antarctica',c("long","lat","region")] # remove Antarctica, drop irrelevant columns
+countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
 names(countries)[names(countries) == "region"] <- "Country" # rename "region" column to "Country" so we can join the two datasets
 
 # Join map data to fishing data
@@ -101,7 +101,7 @@ mapp <- ggplot() +
                                   fill = Catch,
                                   x = long, 
                                   y = lat,
-                                  group = Country
+                                  group = group
                                   ), inherit.aes = FALSE
                ) 
 

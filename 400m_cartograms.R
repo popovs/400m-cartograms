@@ -27,6 +27,7 @@ set_wd <- function() {
 set_wd()
 
 # Install and load all other necessary packages
+# Note I am in British Columbia so SFU is the closest CRAN mirror for me, might be a bit slower if you are far away.
 #if (!require(rgeos)) {
 #  install.packages("rgeos", repos = "http://cran.stat.sfu.ca/")
 #  require(rgeos)
@@ -82,24 +83,6 @@ if (!require(cartogram)) {
   require(cartogram)
 }
 
-# JK FFTW IS A HOT MESS, WILL CONFIDENTLY DELETE IT ONCE I GET THE REGULAR CARTOGRAM PACKAGE WORKING!!
-
-# FIRST, DOWNLOAD THE LATEST FFTW (Fast Fourier Transform) PACKAGE. The next two GitHub cartogram packages will NOT install without these binaries. http://www.fftw.org/download.html 
-
-# Also install the R package "fftw": 
-#if (!require(fftw)) {
-#  install.packages("fftw", repos = "http://cran.stat.sfu.ca/")
-#  require(fftw) # fast Fourier transform
-#}
-
-# Install & load devtools in order to use GitHub packages
-#if (!require(devtools)) {
-#  install.packages("devtools", repos = "http://cran.stat.sfu.ca/")
-#  require(devtools)
-#}
-#install_github('omegahat/Rcartogram')
-# Wait for installation, and then:
-#install_github('chrisbrunsdon/getcartr', subdir='getcartr')
 
 # ----------------
 # 02 CSV READ AND DATAFRAME CREATION
@@ -130,9 +113,13 @@ map1950$CATCH[is.na(map1950$CATCH)] <- 0
 # Now fill all values < 1 with 1 so cartogram actually works (otherwise countries with zeros will just be missing)
 map1950$CATCH[map1950$CATCH < 1] <- 1
 
-# Now make the cartogram! FYI this will take FOREVER. Each iteration takes ~30 seconds. 
+# Now make the cartogram! FYI this will take FOREVER. Each iteration takes ~1 minute. 
 carto1950 <- cartogram(map1950, "CATCH", itermax=50)
 plot(carto1950)
+
+# Create shapefiles directory
+dir.create("Shapefiles")
+# Save as shapefile
 
 
 # ----------------
@@ -141,12 +128,12 @@ plot(carto1950)
 
 # ORIGINAL GGPLOT TESTING
 
-#countries <- map_data("world")
-#countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
+countries <- map_data("world")
+countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
 #names(countries)[names(countries) == "region"] <- "Country" # rename "region" column to "Country" so we can join the two datasets
 
 # Join map data to fishing data
-#map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
+map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
 #map_data_1970 <- merge(countries, c1970, by="Country", all=TRUE)
 #map_data_1990 <- merge(countries, c1990, by="Country", all=TRUE)
 #map_data_2014 <- merge(countries, c2014, by="Country", all=TRUE)

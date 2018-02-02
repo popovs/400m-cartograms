@@ -3,8 +3,8 @@
 
 # 01 This Datacarpentry workshop is overall super helpful for any R GIS: http://www.datacarpentry.org/R-spatial-raster-vector-lesson/ 
 # 02 This GitHub.io page goes through basic vector/shapefile plotting: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
-# 03 Plotting cartograms using R: http://trucvietle.me/r/tutorial/2016/12/18/cartogram-plotting-using-r.html 
-
+# 03 Plotting cartograms using R: http://trucvietle.me/r/tutorial/2016/12/18/cartogram-plotting-using-r.html (outdated/no good?)
+# 04 Awesome Africa cartogram animation: https://www.r-graph-gallery.com/a-smooth-transition-between-chloropleth-and-cartogram/ 
 
 # ----------------
 # 01 INITIAL SETUP
@@ -106,9 +106,28 @@ c1970 <- fishing_data[fishing_data$Year==1970,]
 c1990 <- fishing_data[fishing_data$Year==1990,]
 c2014 <- fishing_data[fishing_data$Year==2014,]
 
+# In the v near future: create one large csv with the following columns: Country NAME, CATCH1950, CATCH1970, CATCH1990, CATCH2014
+
 # ----------------
 # 03 PREPARE GIS DATA
 # ----------------
+
+world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica
+
+names(c1950) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the spdf, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
+
+map1950 <- merge(world, c1950, by="NAME", all=TRUE)
+
+# Fill NAs with 0s
+map1950$CATCH[is.na(map1950$CATCH)] <- 0
+# Now fill all values < 1 with 1 so cartogram actually works (otherwise countries with zeros will just be missing)
+map1950$CATCH[map1950$CATCH < 1] <- 1
+
+# Now make the cartogram! FYI this will take FOREVER. Each country takes ~30 seconds to process. There are 246 countries. 
+carto1950 <- cartogram(map1950, "CATCH", itermax=7)
+plot(carto1950)
+
+
 
 countries <- map_data("world")
 countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
@@ -151,6 +170,7 @@ p1950 <- ggplot() +
             )
 
 plot(p1950)
+
 
 
 #carto1950 <- quick.carto(map_data_1950, )

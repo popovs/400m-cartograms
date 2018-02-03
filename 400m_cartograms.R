@@ -82,6 +82,10 @@ if (!require(cartogram)) {
   install.packages("cartogram", repos = "http://cran.stat.sfu.ca/")
   require(cartogram)
 }
+if (!require(broom)) {
+  install.packages("broom", repos = "http://cran.stat.sfu.ca/")
+  require(broom)
+}
 
 
 # ----------------
@@ -97,12 +101,18 @@ c2014 <- fishing_data[fishing_data$Year==2014,]
 
 # In the v near future: create one large csv with the following columns: Country NAME, CATCH1950, CATCH1970, CATCH1990, CATCH2014 to quickly recreate the fig w 4 maps
 
+# Create loop to make datasets for each
+years <- unique(fishing_data$Year)
+
 # ----------------
 # 03 PREPARE GIS DATA
 # ----------------
 
 data("wrld_simpl") # Simple world dataset from maptools
 world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica
+
+# Eventually maybe also select only the relevant columns from wrld_simpl
+
 # world2 <- spTransform(wrld_simpl, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 
 names(c1950) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the spdf, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
@@ -127,6 +137,20 @@ writeOGR(obj = carto1950, dsn = "Shapefiles", layer = "carto1950", driver = "ESR
 # 04 PLOT
 # ----------------
 
+# Transform all from SpatialPolygonsDataFrame to ggplot-friendly dataframe
+gg1950 <- tidy(carto1950) # This works
+gg1950 <- tidy(carto1950, region="NAME") # But this throws me an error?? 
+#gg1950 <- merge(gg1950, carto1950@data, by="WHAT DO I MERGE BY???") # No idea what the "id" numbers are after tidying. id number 103 is INDONESIA after some testing (see below). Whiiiiich means that the id number does not line up AT ALL with the original cart1950 dataset. HMM. 
+
+p1950 <- ggplot() + 
+  geom_polygon(data = subset(gg1950, id == 103), aes(
+                #fill = id, 
+                x = long,
+                y = lat,
+                group = group))
+plot(p1950)
+
+
 # ORIGINAL GGPLOT TESTING
 
 #countries <- map_data("world")
@@ -134,7 +158,7 @@ writeOGR(obj = carto1950, dsn = "Shapefiles", layer = "carto1950", driver = "ESR
 #names(countries)[names(countries) == "region"] <- "Country" # rename "region" column to "Country" so we can join the two datasets
 
 # Join map data to fishing data
-# map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
+#map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
 #map_data_1970 <- merge(countries, c1970, by="Country", all=TRUE)
 #map_data_1990 <- merge(countries, c1990, by="Country", all=TRUE)
 #map_data_2014 <- merge(countries, c2014, by="Country", all=TRUE)

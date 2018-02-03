@@ -32,10 +32,10 @@ set_wd()
 #  install.packages("rgeos", repos = "http://cran.stat.sfu.ca/")
 #  require(rgeos)
 #}
-#if (!require(rgdal)) {
-#  install.packages("rgdal", repos = "http://cran.stat.sfu.ca/")
-#  require(rgdal)
-#}
+if (!require(rgdal)) {
+  install.packages("rgdal", repos = "http://cran.stat.sfu.ca/")
+  require(rgdal)
+}
 #if (!require(raster)) {
 #  install.packages("raster", repos = "http://cran.stat.sfu.ca/")
 #  require(raster)
@@ -103,6 +103,7 @@ c2014 <- fishing_data[fishing_data$Year==2014,]
 
 data("wrld_simpl") # Simple world dataset from maptools
 world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica
+# world2 <- spTransform(wrld_simpl, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 
 names(c1950) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the spdf, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
 
@@ -120,7 +121,7 @@ plot(carto1950)
 # Create shapefiles directory
 dir.create("Shapefiles")
 # Save as shapefile
-
+writeOGR(obj = carto1950, dsn = "Shapefiles", layer = "carto1950", driver = "ESRI Shapefile") # "dsn" argument isn't the clearest on the documentation, but for ESRI Shapefiles I believe it's just the directory you want to save it to.
 
 # ----------------
 # 04 PLOT
@@ -128,12 +129,12 @@ dir.create("Shapefiles")
 
 # ORIGINAL GGPLOT TESTING
 
-countries <- map_data("world")
-countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
+#countries <- map_data("world")
+#countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
 #names(countries)[names(countries) == "region"] <- "Country" # rename "region" column to "Country" so we can join the two datasets
 
 # Join map data to fishing data
-map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
+# map_data_1950 <- merge(countries, c1950, by="Country", all=TRUE)
 #map_data_1970 <- merge(countries, c1970, by="Country", all=TRUE)
 #map_data_1990 <- merge(countries, c1990, by="Country", all=TRUE)
 #map_data_2014 <- merge(countries, c2014, by="Country", all=TRUE)

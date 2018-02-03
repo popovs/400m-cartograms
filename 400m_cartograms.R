@@ -94,28 +94,51 @@ if (!require(broom)) {
 
 fishing_data <- read.csv('FAOSAU_400m_country_gis.csv', stringsAsFactors = F)
 
-c1950 <- fishing_data[fishing_data$Year==1950,]
-c1970 <- fishing_data[fishing_data$Year==1970,]
-c1990 <- fishing_data[fishing_data$Year==1990,]
-c2014 <- fishing_data[fishing_data$Year==2014,]
+names(fishing_data) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the future spatial data, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
+
+#c1950 <- fishing_data[fishing_data$Year==1950,]
+#c1970 <- fishing_data[fishing_data$Year==1970,]
+#c1990 <- fishing_data[fishing_data$Year==1990,]
+#c2014 <- fishing_data[fishing_data$Year==2014,]
 
 # In the v near future: create one large csv with the following columns: Country NAME, CATCH1950, CATCH1970, CATCH1990, CATCH2014 to quickly recreate the fig w 4 maps
 
 # Create loop to make datasets for each
-years <- unique(fishing_data$Year)
+years <- unique(fishing_data$Year) # List containing all the years
+
+fishing_years <- list() # Empty list that will contain the future dataframe names
+for (year in years){
+  #print(year)
+  dfname <- paste("c", year, sep="") # Create dataframe names in the form: "c<year>"
+  #print(dfname)
+  fishing_years[[dfname]] <- assign(paste(dfname), data.frame(fishing_data[fishing_data$Year == year,])) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. tbh not sure why the dataframes themselves are appearing, need to actually fix that later. 
+}
 
 # ----------------
 # 03 PREPARE GIS DATA
 # ----------------
 
 data("wrld_simpl") # Simple world dataset from maptools
-world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica
-
-# Eventually maybe also select only the relevant columns from wrld_simpl
+#world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",]
+world2 <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 
 # world2 <- spTransform(wrld_simpl, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 
-names(c1950) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the spdf, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
+# NOW CREATE MERGE LOOP 
+# ugh, i'm tired
+# going home
+map_years <- list(
+  for (year in years) {
+    #print(year)
+    dfname <- paste("map",year,sep="")
+  }
+)
+
+
+for (i in 1:length(fishing_years)){
+  
+}
+
 
 map1950 <- merge(world, c1950, by="NAME", all=TRUE)
 

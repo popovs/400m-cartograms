@@ -104,15 +104,19 @@ names(fishing_data) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "
 # In the v near future: create one large csv with the following columns: Country NAME, CATCH1950, CATCH1970, CATCH1990, CATCH2014 to quickly recreate the fig w 4 maps
 
 # Create loop to make datasets for each
-years <- unique(fishing_data$Year) # List containing all the years
+years <- unique(fishing_data$YEAR) # List containing all the years
 
-fishing_years <- list() # Empty list that will contain the future dataframe names
+fishing_years <- list() # Empty list that will contain the future year-by-year dataframes
 for (year in years){
   #print(year)
   dfname <- paste("c", year, sep="") # Create dataframe names in the form: "c<year>"
   #print(dfname)
-  fishing_years[[dfname]] <- assign(paste(dfname), data.frame(fishing_data[fishing_data$Year == year,])) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. tbh not sure why the dataframes themselves are appearing, need to actually fix that later. 
+  fishing_years[[dfname]] <- data.frame(fishing_data[fishing_data$YEAR == year,]) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. tbh not sure why the dataframes themselves are appearing, need to actually fix that later. 
+  rm(dfname) # remove the floaters
+  rm(year)
 }
+
+#rm(list=ls(pattern="c")) # Useful for deleting large accidental amounts of objects created by loops x_x
 
 # ----------------
 # 03 PREPARE GIS DATA

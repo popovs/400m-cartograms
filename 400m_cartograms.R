@@ -28,10 +28,10 @@ set_wd()
 
 # Install and load all other necessary packages
 # Note I am in British Columbia so SFU is the closest CRAN mirror for me, might be a bit slower if you are far away.
-#if (!require(rgeos)) {
-#  install.packages("rgeos", repos = "http://cran.stat.sfu.ca/")
-#  require(rgeos)
-#}
+if (!require(rgeos)) {
+  install.packages("rgeos", repos = "http://cran.stat.sfu.ca/")
+  require(rgeos)
+}
 if (!require(rgdal)) {
   install.packages("rgdal", repos = "http://cran.stat.sfu.ca/")
   require(rgdal)
@@ -109,7 +109,7 @@ years <- unique(fishing_data$YEAR) # List containing all the years
 fishing_years <- list() # Empty list that will contain the future year-by-year dataframes
 for (year in years){
   #print(year)
-  dfname <- paste("c", year, sep="") # Create dataframe names in the form: "c<year>"
+  dfname <- paste0("c", year) # Create dataframe names in the form: "c<year>"
   #print(dfname)
   fishing_years[[dfname]] <- data.frame(fishing_data[fishing_data$YEAR == year,]) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. tbh not sure why the dataframes themselves are appearing, need to actually fix that later. 
   rm(dfname) # remove the floaters
@@ -124,19 +124,23 @@ for (year in years){
 
 data("wrld_simpl") # Simple world dataset from maptools
 #world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",]
-world2 <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 
-# world2 <- spTransform(wrld_simpl, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
+# world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 
-# NOW CREATE MERGE LOOP 
-# ugh, i'm tired
-# going home
-map_years <- list(
-  for (year in years) {
+#<object>@proj4string # Check CRS of a Spatial*DataFrame object.
+
+# NOW CREATE MERGE LOOP
+# Merge catch data with GIS data
+# Put each merged year/map dataset into large map_years spdf list
+map_years <- list()
+for (year in years) {
     #print(year)
-    dfname <- paste("map",year,sep="")
-  }
-)
+    fishing_year <- get(paste0("c", year), fishing_years) # get c<year> from the fishing_years list of df's, so we can merge
+    dfname <- paste0("map", year)
+    map_years[[dfname]] <- merge(world, i, by="NAME", all=TRUE)
+}
+
 
 
 for (i in 1:length(fishing_years)){

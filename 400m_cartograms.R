@@ -137,10 +137,11 @@ for (year in years) {
     #print(year)
     fishing_year <- get(paste0("c", year), fishing_years) # get c<year> from the fishing_years list of df's, so we can merge
     dfname <- paste0("map", year) # create spdf names in the form "map<year>"
-    map_years[[dfname]] <- merge(world, i, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
+    print(dfname)
+    map_years[[dfname]] <- merge(world, fishing_year, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
     map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
-    rm(dfname) # remove the floaters
-    rm(year)
+    #rm(dfname) # remove the floaters
+    #rm(year)
 }
 
 # ----------------
@@ -153,10 +154,10 @@ carto1950 <- cartogram(test1950, "CATCH", itermax=5)
 plot(carto1950, main="carto1950")
 
 
-years <- list("1950","1970","1990","2014") # shorten years for test loop
-years <- 1970
+years2 <- list("1950","1970","1990","2014") # shorten years for test loop
+years2 <- 1970
 carto_maps <- list()
-for (year in years) {
+for (year in years2) {
   print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)

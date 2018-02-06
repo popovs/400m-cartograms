@@ -111,7 +111,7 @@ for (year in years){
   #print(year)
   dfname <- paste0("c", year) # Create dataframe names in the form: "c<year>"
   #print(dfname)
-  fishing_years[[dfname]] <- data.frame(fishing_data[fishing_data$YEAR == year,]) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. tbh not sure why the dataframes themselves are appearing, need to actually fix that later. 
+  fishing_years[[dfname]] <- data.frame(fishing_data[fishing_data$YEAR == year,]) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. 
   rm(dfname) # remove the floaters
   rm(year)
 }
@@ -127,7 +127,6 @@ data("wrld_simpl") # Simple world dataset from maptools
 world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 
 # world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
-
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
 
 # NOW CREATE MERGE LOOP
@@ -137,27 +136,33 @@ map_years <- list()
 for (year in years) {
     #print(year)
     fishing_year <- get(paste0("c", year), fishing_years) # get c<year> from the fishing_years list of df's, so we can merge
-    dfname <- paste0("map", year)
-    map_years[[dfname]] <- merge(world, i, by="NAME", all=TRUE)
+    dfname <- paste0("map", year) # create spdf names in the form "map<year>"
+    map_years[[dfname]] <- merge(world, i, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
+    map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
+    rm(dfname) # remove the floaters
+    rm(year)
 }
 
-
-
-for (i in 1:length(fishing_years)){
-  
-}
-
-
-map1950 <- merge(world, c1950, by="NAME", all=TRUE)
-
-# Fill NAs with 0s
-map1950$CATCH[is.na(map1950$CATCH)] <- 0
-# Now fill all values < 1 with 1 so cartogram actually works (otherwise countries with zeros will just be missing)
-map1950$CATCH[map1950$CATCH < 1] <- 1
+# ----------------
+# 04 CARTOGRAM LOOP
+# ----------------
 
 # Now make the cartogram! FYI this will take FOREVER. Each iteration takes ~1 minute. 
-carto1950 <- cartogram(map1950, "CATCH", itermax=50)
-plot(carto1950)
+test1950 <- map_years[["map1950"]]
+carto1950 <- cartogram(test1950, "CATCH", itermax=5)
+plot(carto1950, main="carto1950")
+
+
+years <- list("1950","1970","1990","2014") # shorten years for test loop
+years <- 1970
+carto_maps <- list()
+for (year in years) {
+  print(year)
+  dfname <- paste0("carto",year)
+  map_year <- get(paste0("map", year), map_years)
+  #rm(dfname) # remove the floaters
+  #rm(year)
+}
 
 # Create shapefiles directory
 dir.create("Shapefiles")
@@ -165,13 +170,13 @@ dir.create("Shapefiles")
 writeOGR(obj = carto1950, dsn = "Shapefiles", layer = "carto1950", driver = "ESRI Shapefile") # "dsn" argument isn't the clearest on the documentation, but for ESRI Shapefiles I believe it's just the directory you want to save it to.
 
 # ----------------
-# 04 PLOT
+# 05 PLOT
 # ----------------
 
 # Transform all from SpatialPolygonsDataFrame to ggplot-friendly dataframe
 gg1950 <- tidy(carto1950) # This works
 gg1950 <- tidy(carto1950, region="NAME") # But this throws me an error?? 
-#gg1950 <- merge(gg1950, carto1950@data, by="WHAT DO I MERGE BY???") # No idea what the "id" numbers are after tidying. id number 103 is INDONESIA after some testing (see below). Whiiiiich means that the id number does not line up AT ALL with the original cart1950 dataset. HMM. 
+#gg1950 <- merge(gg1950, carto1950@data, by="WHAT DO I MERGE BY???") # No idea what the "id" numbers are after tidying. id number 103 is INDONESIA after some testing (see below). Which is the primary key/ID number of the original merged dataset!
 
 p1950 <- ggplot() + 
   geom_polygon(data = subset(gg1950, id == 103), aes(

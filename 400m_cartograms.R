@@ -133,6 +133,7 @@ for (year in years) {
     #print(dfname)
     map_years[[dfname]] <- merge(world, fishing_year, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
     map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
+    map_years[[dfname]]@data$CATCH[map_years[[dfname]]@data$CATCH < 1] <- 1 # Fill 0s with 1s so cartogram actually works 
     rm(dfname) # remove the floaters
     rm(year)
 }
@@ -146,13 +147,14 @@ for (year in years) {
 
 # Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
 carto_maps <- list()
-for (year in years) {
+for (year in years[1:2]) {
+  print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
   carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=50)
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
-  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed to be running OVERNIGHT -_-
   #rm(dfname) # remove the floaters
   #rm(year)
 }

@@ -152,7 +152,7 @@ for (year in years) {
   carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=50)
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
-  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile") # Save shapefile
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
   #rm(dfname) # remove the floaters
   #rm(year)
 }

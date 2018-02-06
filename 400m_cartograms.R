@@ -141,28 +141,21 @@ for (year in years) {
 # 04 CARTOGRAM LOOP
 # ----------------
 
-# Now make the cartogram! FYI this will take FOREVER. Each iteration takes ~1 minute. 
-test1950 <- map_years[["map1950"]]
-carto1950 <- cartogram(test1950, "CATCH", itermax=5)
-plot(carto1950, main="carto1950")
+# Create shapefiles directory - only need to do this once
+#dir.create("Shapefiles")
 
-
-years2 <- list("1950","1970","1990","2014") # shorten years for test loop
+# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
 carto_maps <- list()
-for (year in years2) {
+for (year in years) {
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=1)
+  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=50)
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile") # Save shapefile
   #rm(dfname) # remove the floaters
   #rm(year)
 }
-
-# Create shapefiles directory
-dir.create("Shapefiles")
-# Save as shapefile
-writeOGR(obj = carto1950, dsn = "Shapefiles", layer = "carto1950", driver = "ESRI Shapefile") # "dsn" argument isn't the clearest on the documentation, but for ESRI Shapefiles I believe it's just the directory you want to save it to.
 
 # ----------------
 # 05 PLOT

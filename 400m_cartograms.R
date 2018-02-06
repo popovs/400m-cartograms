@@ -96,14 +96,7 @@ fishing_data <- read.csv('FAOSAU_400m_country_gis.csv', stringsAsFactors = F)
 
 names(fishing_data) <- c("NAME", "YEAR", "CATCH") # Rename "Country" column to "NAME" so we can merge our catch data with the future spatial data, using the NAME column to link between the two. Capitalizing Year and Catch to make things more consistent once merged.
 
-#c1950 <- fishing_data[fishing_data$Year==1950,]
-#c1970 <- fishing_data[fishing_data$Year==1970,]
-#c1990 <- fishing_data[fishing_data$Year==1990,]
-#c2014 <- fishing_data[fishing_data$Year==2014,]
-
-# In the v near future: create one large csv with the following columns: Country NAME, CATCH1950, CATCH1970, CATCH1990, CATCH2014 to quickly recreate the fig w 4 maps
-
-# Create loop to make datasets for each
+# Create loop to make datasets for each year
 years <- unique(fishing_data$YEAR) # List containing all the years
 
 fishing_years <- list() # Empty list that will contain the future year-by-year dataframes
@@ -137,11 +130,11 @@ for (year in years) {
     #print(year)
     fishing_year <- get(paste0("c", year), fishing_years) # get c<year> from the fishing_years list of df's, so we can merge
     dfname <- paste0("map", year) # create spdf names in the form "map<year>"
-    print(dfname)
+    #print(dfname)
     map_years[[dfname]] <- merge(world, fishing_year, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
     map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
-    #rm(dfname) # remove the floaters
-    #rm(year)
+    rm(dfname) # remove the floaters
+    rm(year)
 }
 
 # ----------------
@@ -155,12 +148,13 @@ plot(carto1950, main="carto1950")
 
 
 years2 <- list("1950","1970","1990","2014") # shorten years for test loop
-years2 <- 1970
 carto_maps <- list()
 for (year in years2) {
-  print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
+  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=1)
+  plot(carto_maps[[dfname]], main=dfname)
+  print(paste("Finished", dfname, "at", Sys.time()))
   #rm(dfname) # remove the floaters
   #rm(year)
 }

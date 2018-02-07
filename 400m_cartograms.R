@@ -36,36 +36,6 @@ if (!require(rgdal)) {
   install.packages("rgdal", repos = "http://cran.stat.sfu.ca/")
   require(rgdal)
 }
-#if (!require(raster)) {
-#  install.packages("raster", repos = "http://cran.stat.sfu.ca/")
-#  require(raster)
-#}
-#if (!require(sf)) {
-#  install.packages("sf", repos = "http://cran.stat.sfu.ca/")
-#  require(sf)
-#}
-#if (!require(maps)) {
-#  install.packages("maps", repos = "http://cran.stat.sfu.ca/")
-#  require(maps)
-#}
-#if (!require(rasterVis)) {
-#  install.packages("rasterVis", repos = "http://cran.stat.sfu.ca/")
-#  require(rasterVis)
-#}
-#if (!require(stringr)) {
-#  install.packages("stringr", repos = "http://cran.stat.sfu.ca/")
-#  require(stringr)
-#}
-#if (!require(cartogram)) {
-#  install.packages("cartogram", repos = "http://cran.stat.sfu.ca/")
-#  require(cartogram)
-#}
-#if(!require(viridis)) {
-#  install.packages("viridis", repos="http://cran.stat.sfu.ca/")
-#  require(viridis)
-#}
-
-
 if (!require(ggplot2)) {
   install.packages("ggplot2", repos = "http://cran.stat.sfu.ca/")
   require(ggplot2)
@@ -166,7 +136,7 @@ fishtogram <- function(year) {
   print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
+  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile

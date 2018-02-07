@@ -136,12 +136,36 @@ fishtogram <- function(year) {
   print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
+  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH") # ONE ITERATION FOR TESTING
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile
 }
 
+# Parallelization
+if (!require(parallel)) {
+  install.packages("parallel", repos = "http://cran.stat.sfu.ca/")
+  require(parallel)
+}
+if (!require(doParallel)) {
+  install.packages("doParallel", repos = "http://cran.stat.sfu.ca/")
+  require(doParallel)
+}
+
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+
+clusterExport(cl, "fishtogram")
+clusterExport(cl, "cartogram")
+clusterExport(cl, "year")
+clusterExport(cl, "dfname")
+clusterExport(cl, "map_years")
+clusterExport(cl, "map_year")
+clusterExport(cl, "carto_maps")
+
+parLapply(cl, seq(1975, 2014, 10), fishtogram)
+
+stopCluster(cl)
 
 # ----------------
 # 05 PLOT

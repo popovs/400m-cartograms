@@ -147,7 +147,7 @@ for (year in years) {
 
 # Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
 carto_maps <- list()
-for (year in years[1:2]) {
+for (year in years[2:65]) {
   print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)

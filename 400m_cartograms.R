@@ -159,14 +159,27 @@ for (year in years[2:65]) {
   #rm(year)
 }
 
+# ***********************************
+# FUNCTION ATTEMPT
+# ***********************************
+fishtogram <- function(year) {
+  print(year)
+  dfname <- paste0("carto",year)
+  map_year <- get(paste0("map", year), map_years)
+  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
+  plot(carto_maps[[dfname]], main=dfname)
+  print(paste("Finished", dfname, "at", Sys.time()))
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile
+}
+
+
 # ----------------
 # 05 PLOT
 # ----------------
 
 # Transform all from SpatialPolygonsDataFrame to ggplot-friendly dataframe
 gg1950 <- tidy(carto1950) # This works
-gg1950 <- tidy(carto1950, region="NAME") # But this throws me an error?? 
-#gg1950 <- merge(gg1950, carto1950@data, by="WHAT DO I MERGE BY???") # No idea what the "id" numbers are after tidying. id number 103 is INDONESIA after some testing (see below). Which is the primary key/ID number of the original merged dataset!
+gg1950 <- merge(gg1950, carto1950@data, by="id") # Need to add index "id" column in original carto1950 data for this merge to work
 
 p1950 <- ggplot() + 
   geom_polygon(data = subset(gg1950, id == 103), aes(

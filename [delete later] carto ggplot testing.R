@@ -2,6 +2,7 @@ setwd('C:/Users/spopov/Documents/GIS/Deng/400m-cartograms')
 
 fishing_data <- read.csv('FAOSAU_400m_country_gis.csv')
 colnames(fishing_data)[1] <- "NAME"
+years <- unique(fishing_data$Year)
 
 library(ggplot2)
 library(dplyr)
@@ -44,24 +45,22 @@ p1950 <- ggplot(
     aes (fill = bins)
   ) +
   # cartogram outlines
-  geom_polygon(
-    aes (fill = NA,
-         alpha = 0.3),
-    color = "#2b2b2b",
-    size = 0.1
+  geom_path(
+    color = "#5e5e5e", #2b2b2b
+    size = 0.5
   ) +
   # constrain proportions
   coord_fixed()
 #plot(p1950)
 
 # Now make the theme nice
-#library(showtext)
-#font_add_google("Karla", "karla") # Add nice google font
-#showtext_auto() # Tell R to use showtext to render google font
+library(showtext)
+font_add_google("Karla", "karla") # Add nice google font
+showtext_auto() # Tell R to use showtext to render google font
 # Nice fonts don't work >:(
 
 #Manually downloaded Karla
-#windowsFonts(Karla=windowsFont("Karla"))
+windowsFonts(Karla=windowsFont("Karla"))
 
 theme_map <- function(...) {
   theme_minimal() +
@@ -96,10 +95,14 @@ p1950 <- p1950 +
 #plot(p1950)
 
 # Better color scale
+library(RColorBrewer)
+col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
+#col.pal <- rev(col.pal) # reverse color order
+col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
 p1950 <- p1950 +
-  scale_fill_brewer(
-    palette="YlGnBu"
+  scale_fill_manual(
+    values = col.pal,
+    name = "Catch (tonnes)"
     )
 plot(p1950)
-
 

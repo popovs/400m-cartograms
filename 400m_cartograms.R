@@ -86,8 +86,7 @@ for (year in years){
 # ----------------
 
 data("wrld_simpl") # Simple world dataset from maptools
-#world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",]
-world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf) from base R, minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 
 # world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
@@ -132,11 +131,12 @@ for (year in years[2:65]) {
 # ***********************************
 # FUNCTION ATTEMPT
 # ***********************************
+
 fishtogram <- function(year) {
   print(year)
   dfname <- paste0("carto",year)
   map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH") # ONE ITERATION FOR TESTING
+  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
   plot(carto_maps[[dfname]], main=dfname)
   print(paste("Finished", dfname, "at", Sys.time()))
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile
@@ -157,13 +157,15 @@ cl <- makeCluster(no_cores)
 
 clusterExport(cl, "fishtogram")
 clusterExport(cl, "cartogram")
+clusterExport(cl, "writeOGR")
+clusterExport(cl, "plot")
 clusterExport(cl, "year")
 clusterExport(cl, "dfname")
 clusterExport(cl, "map_years")
 clusterExport(cl, "map_year")
 clusterExport(cl, "carto_maps")
 
-parLapply(cl, seq(1975, 2014, 10), fishtogram)
+parLapply(cl, seq(1975, 1977, 2), fishtogram)
 
 stopCluster(cl)
 
@@ -186,7 +188,10 @@ plot(p1950)
 
 # ORIGINAL GGPLOT TESTING
 
-#countries <- map_data("world")
+# NEED TO GO BACK TO USING COUNTRIES DATASET 
+# Doesn't split Chukchi peninsula
+
+countries <- map_data("world")
 #countries <- countries[countries$region!='Antarctica',1:5] # remove Antarctica, drop irrelevant columns
 #names(countries)[names(countries) == "region"] <- "Country" # rename "region" column to "Country" so we can join the two datasets
 
@@ -204,8 +209,8 @@ plot(p1950)
 
 p1950 <- ggplot() + 
   # countries
-  geom_polygon(data = map_data_1950, aes(
-                                  fill = Catch,
+  geom_polygon(data = countries, aes(
+                                  #fill = Catch,
                                   x = long, 
                                   y = lat,
                                   group = group

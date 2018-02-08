@@ -156,14 +156,15 @@ no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
 
 clusterExport(cl, "fishtogram")
-clusterExport(cl, "cartogram")
-clusterExport(cl, "writeOGR")
-clusterExport(cl, "plot")
 clusterExport(cl, "year")
 clusterExport(cl, "dfname")
-clusterExport(cl, "map_years")
 clusterExport(cl, "map_year")
+clusterExport(cl, "map_years")
 clusterExport(cl, "carto_maps")
+clusterEvalQ(cl, library(cartogram))
+clusterEvalQ(cl, library(rgdal))
+clusterExport(cl, "writeOGR")
+clusterExport(cl, "plot")
 
 parLapply(cl, seq(1975, 1977, 2), fishtogram)
 

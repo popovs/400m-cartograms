@@ -115,32 +115,24 @@ for (year in years) {
 #dir.create("Shapefiles")
 
 # Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
-carto_maps <- list()
-for (year in years[2:65]) {
-  print(year)
-  dfname <- paste0("carto",year)
-  map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <- cartogram(map_year, "CATCH", itermax=50)
-  plot(carto_maps[[dfname]], main=dfname)
-  print(paste("Finished", dfname, "at", Sys.time()))
-  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed to be running OVERNIGHT -_-
-  #rm(dfname) # remove the floaters
-  #rm(year)
-}
-
-# ***********************************
-# FUNCTION ATTEMPT
-# ***********************************
+carto_maps <- list() # Empty list that will contain cartogram output. 
 
 fishtogram <- function(year) {
   print(year)
-  dfname <- paste0("carto",year)
-  map_year <- get(paste0("map", year), map_years)
-  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # ONE ITERATION FOR TESTING
-  plot(carto_maps[[dfname]], main=dfname)
-  print(paste("Finished", dfname, "at", Sys.time()))
-  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile
+  dfname <- paste0("carto",year) # name of cartogram being made
+  map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
+  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # USE ONE ITERATION FOR TESTING. This is the part that takes forever. Create cartogram named 'dfname', chuck it into the carto_maps list
+  plot(carto_maps[[dfname]], main=dfname) # plot it
+  print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed to be running OVERNIGHT -_-
 }
+
+# Loop through given years and apply function fishtogram to those years (R is v slow at for loops.)
+lapply(seq(1975, 1977, 2), fishtogram)
+
+# ***********************************
+# PARALLELIZATION ATTEMPT
+# ***********************************
 
 # Parallelization
 if (!require(parallel)) {

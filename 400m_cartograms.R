@@ -85,11 +85,19 @@ for (year in years){
 # 03 PREPARE GIS DATA
 # ----------------
 
-data("wrld_simpl") # Simple world dataset from maptools
-world <- wrld_simpl[wrld_simpl$NAME != "Antarctica",c("ISO3", "NAME", "REGION", "LON", "LAT")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+# data("wrld_simpl") # Simple world dataset from maptools
+data(World, package="tmap") # Trying out suggestion on Github here (https://github.com/sjewo/cartogram/issues/7), using a simplified world map to make things a bit faster
+wo <- gSimplify(World, 10000)
+wrld_simpl <- SpatialPolygonsDataFrame(wo, World@data, match.ID=F)
+rm(World)
 
-# world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
+world <- wrld_simpl[wrld_simpl$name != "Antarctica",c("iso_a3", "name", "continent")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+world <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Transform back to EPSG 4326 projection
+
+#world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
+
+names(world) <- c("ISO3", "NAME", "REGION")
 
 # NOW CREATE MERGE LOOP
 # Merge catch data with GIS data
@@ -117,50 +125,105 @@ for (year in years) {
 # Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
 carto_maps <- list() # Empty list that will contain cartogram output. 
 
-fishtogram <- function(year) {
-  print(year)
-  dfname <- paste0("carto",year) # name of cartogram being made
-  map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
-  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # USE ONE ITERATION FOR TESTING. This is the part that takes forever. Create cartogram named 'dfname', chuck it into the carto_maps list
-  plot(carto_maps[[dfname]], main=dfname) # plot it
-  print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
-  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed to be running OVERNIGHT -_-
-}
+#fishtogram <- function(year) {
+#  print(year)
+#  dfname <- paste0("carto",year) # name of cartogram being made
+#  map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame #of a year of fishing/country data pulled from the list of spdf's 'map_years'
+#  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # USE ONE ITERATION FOR TESTING. This is the part #that takes forever. Create cartogram named 'dfname', chuck it into the carto_maps list
+#  plot(carto_maps[[dfname]], main=dfname) # plot it
+#  print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
+#  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_laye#r=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed #to be running OVERNIGHT -_-
+#}
 
 # Loop through given years and apply function fishtogram to those years (R is v slow at for loops.)
-lapply(seq(1975, 1977, 2), fishtogram)
+# lapply(seq(1975, 1977, 2), fishtogram)
 
 # ***********************************
 # PARALLELIZATION ATTEMPT
 # ***********************************
 
 # Parallelization
-if (!require(parallel)) {
-  install.packages("parallel", repos = "http://cran.stat.sfu.ca/")
-  require(parallel)
+#if (!require(parallel)) {
+#  install.packages("parallel", repos = "http://cran.stat.sfu.ca/")
+#  require(parallel)
+#}
+#if (!require(doParallel)) {
+#  install.packages("doParallel", repos = "http://cran.stat.sfu.ca/")
+#  require(doParallel)
+#}
+
+#no_cores <- detectCores() - 1
+#cl <- makeCluster(no_cores)
+
+#clusterExport(cl, "fishtogram")
+#clusterExport(cl, "year")
+#clusterExport(cl, "dfname")
+#clusterExport(cl, "map_year")
+#clusterExport(cl, "map_years")
+#clusterExport(cl, "carto_maps")
+#clusterEvalQ(cl, library(cartogram))
+#clusterEvalQ(cl, library(rgdal))
+#clusterExport(cl, "writeOGR")
+#clusterExport(cl, "plot")
+
+#parLapply(cl, seq(1975, 1977, 2), fishtogram)
+
+#stopCluster(cl)
+
+# ----------------
+# FFTW CARTOGRAMS
+# ----------------
+
+# THIS IS A HOT MESS ON WINDOWS BUT MAKES NICE CARTOGRAMS. MUCH easier if you're working on a Unix system.
+# HOW TO GET FFTW/RCARTOGRAM TO WORK ON WINDOWS: (most recent) https://github.com/Geoff99/Rcartogram/blob/WindowsInstall/vignettes/README.WindowsInstall.Tutorial.Rmd 
+# (but also helpful) https://stackoverflow.com/questions/31613119/installing-rcartogram-packages-error-message 
+
+ # 01 FIRST, DOWNLOAD THE LATEST FFTW (Fast Fourier Transform) PACKAGE. The next two GitHub cartogram packages will NOT install without these binaries. http://www.fftw.org/download.html 
+   # HOW TO INSTALL FFTW ON WINDOWS FOR DUMMIES: https://stackoverflow.com/questions/39675436/how-to-get-fftw-working-on-windows-for-dummies
+ # 02 NEXT, install RTOOLS. Rcartogram (or any other R package that relies on C, for that matter) requires Rtools to work.
+   #  
+
+# Also install the R package "fftw": 
+if (!require(fftw)) {
+  install.packages("fftw", repos = "http://cran.stat.sfu.ca/")
+  require(fftw) # fast Fourier transform
 }
-if (!require(doParallel)) {
-  install.packages("doParallel", repos = "http://cran.stat.sfu.ca/")
-  require(doParallel)
+# Install & load devtools in order to use GitHub packages
+if (!require(devtools)) {
+  install.packages("devtools", repos = "http://cran.stat.sfu.ca/")
+  require(devtools)
+}
+#install_github('omegahat/Rcartogram') # Actually, if on Windows, need to manually download & install (see above first tutorial link): https://github.com/omegahat/Rcartogram 
+# MAKE SURE YOU ARE USING THE "WINDOWSINSTALL" BRANCH OF THIS GUY'S FORK!! 
+# In git bash: cd to the cloned directory, then use: 'git checkout WindowsInstall'
+# If you get an error saying something like "C:/Rtools/mingw_64/bin/gcc: not found", see my comment on this answer HERE: https://stackoverflow.com/questions/33103203/rtools-is-not-being-detected-from-rstudio/44035904#44035904 
+
+# Wait for installation, and then:
+install_github('chrisbrunsdon/getcartr', subdir='getcartr')
+
+# Now load these bad boys that have been causing so much grief:
+library(Rcartogram)
+library(getcartr)
+
+testcarto <- quick.carto(map_years[["map1956"]], map_years[["map1956"]]@data$CATCH, blur = 1)
+plot(testcarto, main="carto1956")
+
+fishtogram <- function(year) {
+  print(year)
+  dfname <- paste0("carto",year) # name of cartogram being made
+  map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
+  carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
+  plot(carto_maps[[dfname]], main=dfname) # plot it
+  print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
+  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed to be running OVERNIGHT -_-
 }
 
-no_cores <- detectCores() - 1
-cl <- makeCluster(no_cores)
+# Testing 2 years
+fishtogram(1956)
+fishtogram(2014)
 
-clusterExport(cl, "fishtogram")
-clusterExport(cl, "year")
-clusterExport(cl, "dfname")
-clusterExport(cl, "map_year")
-clusterExport(cl, "map_years")
-clusterExport(cl, "carto_maps")
-clusterEvalQ(cl, library(cartogram))
-clusterEvalQ(cl, library(rgdal))
-clusterExport(cl, "writeOGR")
-clusterExport(cl, "plot")
-
-parLapply(cl, seq(1975, 1977, 2), fishtogram)
-
-stopCluster(cl)
+# NOW LOOP THROUGH THESE BAD BOYS!!
+lapply(years, fishtogram)
 
 # ----------------
 # 05 PLOT

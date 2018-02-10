@@ -116,7 +116,7 @@ for (year in years) {
 # ----------------
 
 # Create shapefiles directory - only need to do this once
-#dir.create("Shapefiles")
+dir.create("Shapefiles")
 
 # Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
 carto_maps <- list() # Empty list that will contain cartogram output. 
@@ -213,7 +213,7 @@ fishtogram <- function(year) {
 }
 
 # Testing 2 years
-fishtogram(1956)
+fishtogram(1950)
 fishtogram(2014)
 
 # NOW LOOP THROUGH THESE BAD BOYS!!
@@ -225,16 +225,17 @@ lapply(years, fishtogram)
 
 carto1950 <- carto_maps[["carto1950"]] # Pull one map for testing
 
-ggdata <- tidy(carto1950)
-ggdata <- merge(x = ggdata, y = carto1950@data[,c("NAME", "id")], by="id", all.x=TRUE) # Join original country & catch data to tidied dataset
+ggdata <- tidy(carto_maps[["carto1950"]])
+ggdata <- merge(x = ggdata, y = carto1950@data[,c("NAME","CATCH","id")], by="id", all.x=TRUE) # Join original country & catch data to tidied dataset by id column
 #ggdata <- merge(x = ggdata, y = fishing_data[,c("NAME", "CATCH")], by="NAME", all.x = TRUE) # This is messy, but merging with original dataset bc changed 0s to 1s in the cartogram plots to get them to work. Need 0s for plotting color scale. 
-ggdata$Catch[is.na(ggdata$Catch)] <- 0 # replace NAs with 0
+ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NAs with 0
+
 ggdata <- arrange(ggdata, order) # tidy up again for fussy ggplot
 
 # Set bins
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
 ggdata$bins <- cut(
-  ggdata$Catch, 
+  ggdata$CATCH, 
   breaks = bins, 
   labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
   right = FALSE
@@ -307,12 +308,13 @@ p1950 <- p1950 +
 # Better color scale
 library(RColorBrewer)
 col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
-#col.pal <- rev(col.pal) # reverse color order
+col.pal <- rev(col.pal) # reverse color order
 col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
 p1950 <- p1950 +
   scale_fill_manual(
     values = col.pal,
-    name = "Catch (tonnes)"
+    name = "Catch (tonnes)",
+    drop = FALSE
   )
 plot(p1950)
 

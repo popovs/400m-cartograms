@@ -113,6 +113,7 @@ for (year in years) {
     map_years[[dfname]] <- merge(world, fishing_year, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
     map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
     map_years[[dfname]]@data$CATCH[map_years[[dfname]]@data$CATCH < 1] <- 1 # Fill 0s with 1s so cartogram actually works 
+    map_years[[dfname]]@data$YEAR[is.na(map_years[[dfname]]@data$YEAR)] <- year # fill NA years with the current year
     rm(dfname) # remove the floaters
     rm(year)
 }
@@ -187,7 +188,7 @@ ggdata <- merge(x = ggdata, y = carto1950@data[,c("NAME","CATCH","id")], by="id"
 #ggdata <- merge(x = ggdata, y = fishing_data[,c("NAME", "CATCH")], by="NAME", all.x = TRUE) # This is messy, but merging with original dataset bc changed 0s to 1s in the cartogram plots to get them to work. Need 0s for plotting color scale. 
 ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NAs with 0
 
-ggdata <- arrange(ggdata, order) # tidy up again for fussy ggplot
+#ggdata <- arrange(ggdata, order) # tidy up again for fussy ggplot
 
 # Set bins
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
@@ -222,13 +223,12 @@ p1950 <- ggplot(
 #plot(p1950)
 
 # Now make the theme nice
-library(showtext)
+if (!require(showtext)) {
+  install.packages("showtext", repos = "http://cran.stat.sfu.ca/")
+  require(showtext)
+}
 font_add_google("Karla", "karla") # Add nice google font
 showtext_auto() # Tell R to use showtext to render google font
-# Nice fonts don't work >:(
-
-#Manually downloaded Karla
-windowsFonts(Karla=windowsFont("Karla"))
 
 theme_map <- function(...) {
   theme_minimal() +

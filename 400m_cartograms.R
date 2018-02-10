@@ -161,7 +161,7 @@ fishtogram <- function(year) {
   map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
   carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
   rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
-  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto1950@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
+  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
   plot(carto_maps[[dfname]], main=dfname) # plot it
   print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary

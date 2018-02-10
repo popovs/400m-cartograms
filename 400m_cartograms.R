@@ -118,53 +118,8 @@ for (year in years) {
 # Create shapefiles directory - only need to do this once
 dir.create("Shapefiles")
 
-# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! FYI this will take FOREVER. Each iteration takes ~1 minute; 50 iterations per map; 65 maps.
+# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! 
 carto_maps <- list() # Empty list that will contain cartogram output. 
-
-#fishtogram <- function(year) {
-#  print(year)
-#  dfname <- paste0("carto",year) # name of cartogram being made
-#  map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame #of a year of fishing/country data pulled from the list of spdf's 'map_years'
-#  carto_maps[[dfname]] <<- cartogram(map_year, "CATCH", itermax=1) # USE ONE ITERATION FOR TESTING. This is the part #that takes forever. Create cartogram named 'dfname', chuck it into the carto_maps list
-#  plot(carto_maps[[dfname]], main=dfname) # plot it
-#  print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
-#  writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_laye#r=TRUE) # Save shapefile, overwrite old ones if necessary, otherwise this forever code ABORTS when it was supposed #to be running OVERNIGHT -_-
-#}
-
-# Loop through given years and apply function fishtogram to those years (R is v slow at for loops.)
-# lapply(seq(1975, 1977, 2), fishtogram)
-
-# ***********************************
-# PARALLELIZATION ATTEMPT
-# ***********************************
-
-# Parallelization
-#if (!require(parallel)) {
-#  install.packages("parallel", repos = "http://cran.stat.sfu.ca/")
-#  require(parallel)
-#}
-#if (!require(doParallel)) {
-#  install.packages("doParallel", repos = "http://cran.stat.sfu.ca/")
-#  require(doParallel)
-#}
-
-#no_cores <- detectCores() - 1
-#cl <- makeCluster(no_cores)
-
-#clusterExport(cl, "fishtogram")
-#clusterExport(cl, "year")
-#clusterExport(cl, "dfname")
-#clusterExport(cl, "map_year")
-#clusterExport(cl, "map_years")
-#clusterExport(cl, "carto_maps")
-#clusterEvalQ(cl, library(cartogram))
-#clusterEvalQ(cl, library(rgdal))
-#clusterExport(cl, "writeOGR")
-#clusterExport(cl, "plot")
-
-#parLapply(cl, seq(1975, 1977, 2), fishtogram)
-
-#stopCluster(cl)
 
 # ----------------
 # FFTW CARTOGRAMS

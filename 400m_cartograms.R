@@ -48,6 +48,10 @@ if (!require(maptools)) {
   install.packages("maptools", repos = "http://cran.stat.sfu.ca/")
   require(maptools)
 }
+if (!require(tmap)) {
+  install.packages("tmap", repos = "http://cran.stat.sfu.ca/")
+  require(tmap)
+}
 if (!require(broom)) {
   install.packages("broom", repos = "http://cran.stat.sfu.ca/")
   require(broom)
@@ -86,6 +90,8 @@ data(World, package="tmap") # Trying out suggestion on Github here (https://gith
 wo <- gSimplify(World, 10000)
 wrld_simpl <- SpatialPolygonsDataFrame(wo, World@data, match.ID=F)
 rm(World)
+rm(wo)
+rm(wrld_simpl)
 
 world <- wrld_simpl[wrld_simpl$name != "Antarctica",c("iso_a3", "name", "continent")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 world <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Transform back to EPSG 4326 projection
@@ -111,27 +117,15 @@ for (year in years) {
     rm(year)
 }
 
-# ----------------
-# 04 CARTOGRAM LOOP
-# ----------------
+# *****************
+# FFTW INSTALLATION
+# *****************
 
-# Create shapefiles directory - only need to do this once
-dir.create("Shapefiles")
+# THIS IS A HOT MESS ON WINDOWS BUT MAKES NICE CARTOGRAMS. MUCH easier if you're working on a Unix system. See original branch of 400m-cartograms to get Windows install instructions.
 
-# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! 
-carto_maps <- list() # Empty list that will contain cartogram output. 
-
-# ----------------
-# FFTW CARTOGRAMS
-# ----------------
-
-# THIS IS A HOT MESS ON WINDOWS BUT MAKES NICE CARTOGRAMS. MUCH easier if you're working on a Unix system.
-# HOW TO GET FFTW/RCARTOGRAM TO WORK ON WINDOWS: (most recent) https://github.com/Geoff99/Rcartogram/blob/WindowsInstall/vignettes/README.WindowsInstall.Tutorial.Rmd 
-# (but also helpful, I left some comments on the answer if you ever run into any of those issues) https://stackoverflow.com/questions/31613119/installing-rcartogram-packages-error-message 
-
- # 01 FIRST, DOWNLOAD THE LATEST FFTW (Fast Fourier Transform) PACKAGE (both 32 bit & 64 bit). The next two GitHub cartogram packages will NOT install without these binaries. http://www.fftw.org/download.html 
- # 02 NEXT, install RTOOLS. Rcartogram (or any other R package that relies on C, for that matter) requires Rtools to work. https://github.com/stan-dev/rstan/wiki/Install-Rtools-for-Windows 
- # 03. NEXT, go to the tutorial in the very first link to get this nightmare off the ground and running. Once you do, it will be so worth it. 
+# You need homebrew installed to do this the easy way on Unix: https://docs.brew.sh/FAQ.html 
+# To install fftw, enter in command line: 
+# brew install fftw
 
 # Also install the R package "fftw": 
 if (!require(fftw)) {
@@ -143,17 +137,25 @@ if (!require(devtools)) {
   install.packages("devtools", repos = "http://cran.stat.sfu.ca/")
   require(devtools)
 }
-#install_github('omegahat/Rcartogram') # Actually, if on Windows, need to manually download & install (see above first tutorial link): https://github.com/omegahat/Rcartogram 
-# MAKE SURE YOU ARE USING THE "WINDOWSINSTALL" BRANCH OF THIS GUY'S FORK!! 
-# In git bash: cd to the cloned directory, then use: 'git checkout WindowsInstall'
-# If you get an error saying something like "C:/Rtools/mingw_64/bin/gcc: not found", see my comment on this answer HERE: https://stackoverflow.com/questions/33103203/rtools-is-not-being-detected-from-rstudio/44035904#44035904 
-
+# Install the two Github packages
+install_github('omegahat/Rcartogram') 
 # Wait for installation, and then:
 install_github('chrisbrunsdon/getcartr', subdir='getcartr')
 
-# Now load these bad boys that have been causing so much grief:
 library(Rcartogram)
 library(getcartr)
+
+
+
+# ----------------
+# 04 CARTOGRAM LOOP
+# ----------------
+
+# Create shapefiles directory - only need to do this once
+dir.create("Shapefiles")
+
+# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! 
+carto_maps <- list() # Empty list that will contain cartogram output. 
 
 fishtogram <- function(year) {
   print(year)

@@ -225,7 +225,10 @@ all_maps <- dplyr::bind_rows(tidy_cartos)
 
 # Test animation on subset 
 sixties <- all_maps[1959 < all_maps$YEAR & all_maps$YEAR <1970, ]
-# Tween this subset
+sixties$coords <- paste(sixties$long,sixties$lat) # Create coordinates column for each unique coordinate. We're animating between coordinates per year. 
+sixties$ease <- "quadratic-in-out"
+# Tween this subset (totally does not work)
+#tw_sixties <- tween_elements(data = sixties, time = 'YEAR', group = 'coords', ease ='ease', nframes=15)
 
 # Make nice ggplot theme
 if (!require(showtext)) {
@@ -234,6 +237,10 @@ if (!require(showtext)) {
 }
 font_add_google("Karla", "karla") # Add nice google font
 showtext_auto() # Tell R to use showtext to render google font
+
+# **********************
+# DISCRETE COLOR SCALE
+# **********************
 
 # Better color scale
 library(RColorBrewer)
@@ -263,10 +270,10 @@ theme_map <- function(...) {
     ) 
 }
 
-# Full plot
-sixp <- ggplot(
+# Full plot, DISCRETE COLOR SCALE
+p <- ggplot(
   # set mappings for each layer
-  data = sixties, 
+  data = all_maps, 
   aes(
     x = long, 
     y = lat, 
@@ -297,8 +304,54 @@ sixp <- ggplot(
   labs(
     x = NULL,
     y = NULL,
-    title = "Catch in",
-    caption = "FAO + SAU data"
+    title = "FAO + SAU catch in",
+    caption = expression(paste("Victorero ", italic("et al."), " 2018"))
   )
-#plot(sixp)
-gganimate(sixp)
+
+# Will take a minute or two
+gganimate(p, "discrete-FAO-SAU-animation.gif", interval=0.2)
+
+
+# **********************
+# GRADIENT COLOR SCALE
+# **********************
+
+p2 <- ggplot(
+  # set mappings for each layer
+  data = all_maps, 
+  aes(
+    x = long, 
+    y = lat, 
+    frame = YEAR,
+    group = group
+  )
+) +
+  # cartogram
+  geom_polygon(
+    aes (fill = CATCH)
+  ) +
+  # cartogram outlines
+  geom_path(
+    color = "#5e5e5e", #2b2b2b
+    size = 0.5
+  ) +
+  # constrain proportions
+  coord_fixed() +
+  # add nice theme
+  theme_map() +
+  # color scale
+  scale_fill_gradientn(
+    colours = col.pal,
+    name = "Catch (tonnes)",
+    limits = c(0, 407719)
+  ) +
+  # labels
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "FAO + SAU catch in",
+    caption = expression(paste("Victorero", italic("et al."), "2018"))
+  )
+
+# Will take a minute or two
+gganimate(p2, "gradient-FAO-SAU-animation.gif", interval=0.2)

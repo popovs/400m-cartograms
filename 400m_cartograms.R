@@ -178,11 +178,27 @@ fishtogram(2014)
 lapply(years, fishtogram)
 
 # ----------------
-# 05 PLOT
+# 05 PLOT & ANIMATE
 # ----------------
+
+# Create smoothly animated maps between each year.
+# You will need the tweenr library and gganimate library. 
+# For gganimate to run correctly, you need to manually install ImageMagick: 
+# https://www.imagemagick.org/script/index.php 
+# For OS X, this is super easy with homebrew:'brew install ImageMagick'
+
+if (!require(tweenr)) {
+  install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
+  require(tweenr)
+}
+
+# install_github("dgrtwo/gganimate")
+library(gganimate)
 
 # Spatial*DataFrames need to be "tidied" into regular dataframes using the broom library to be ggplot-friendly.
 tidy_cartos <- list() # Empty list to contain all tidied cartograms
+# Set bins for each cartogram (for later plotting)
+bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
 # Tidy up each cartogram and put them all into tidy_cartos list
 for (year in years) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
@@ -201,63 +217,29 @@ for (year in years) {
   tidy_cartos[[dfname]] <- ggdata # Add to list
   rm(dfname)
   rm(year)
+  rm(ggdata)
 }
 
 # Merge every single tidied cartogram in this list into one giant dataframe:
 all_maps <- dplyr::bind_rows(tidy_cartos)
 
-# ********************************
-# ORIGINAL GGPLOT TESTING II BELOW
-# ********************************
+# Test animation on subset 
+sixties <- all_maps[1959 < all_maps$YEAR & all_maps$YEAR <1970, ]
+# Tween this subset
 
-carto1950 <- carto_maps[["carto1950"]] # Pull one map for testing
-
-ggdata <- tidy(carto_maps[["carto1950"]])
-ggdata <- merge(x = ggdata, y = carto1950@data[,c("NAME","CATCH","id")], by="id", all.x=TRUE) # Join original country & catch data to tidied dataset by id column
-#ggdata <- merge(x = ggdata, y = fishing_data[,c("NAME", "CATCH")], by="NAME", all.x = TRUE) # This is messy, but merging with original dataset bc changed 0s to 1s in the cartogram plots to get them to work. Need 0s for plotting color scale. 
-ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NAs with 0
-
-#ggdata <- arrange(ggdata, order) # tidy up again for fussy ggplot
-
-# Set bins
-bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
-ggdata$bins <- cut(
-  ggdata$CATCH, 
-  breaks = bins, 
-  labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
-  right = FALSE
-)
-
-# Basic plot
-p1950 <- ggplot(
-  # set mappings for each layer
-  data = ggdata, 
-  aes(
-    x = long, 
-    y = lat, 
-    group = group
-  )
-) +
-  # cartogram
-  geom_polygon(
-    aes (fill = bins)
-  ) +
-  # cartogram outlines
-  geom_path(
-    color = "#5e5e5e", #2b2b2b
-    size = 0.5
-  ) +
-  # constrain proportions
-  coord_fixed()
-#plot(p1950)
-
-# Now make the theme nice
+# Make nice ggplot theme
 if (!require(showtext)) {
   install.packages("showtext", repos = "http://cran.stat.sfu.ca/")
   require(showtext)
 }
 font_add_google("Karla", "karla") # Add nice google font
 showtext_auto() # Tell R to use showtext to render google font
+
+# Better color scale
+library(RColorBrewer)
+col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
+col.pal <- rev(col.pal) # reverse color order
+col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
 
 theme_map <- function(...) {
   theme_minimal() +
@@ -278,49 +260,45 @@ theme_map <- function(...) {
       legend.background = element_rect(fill = "#f5f5f2", color = NA),
       panel.border = element_blank(),
       ...
-    )
+    ) 
 }
 
-p1950 <- p1950 + 
-  theme_map() +
-  labs(
-    x = NULL,
-    y = NULL,
-    title = "1950",
-    caption = "FAO + SAU data"
+# Full plot
+sixp <- ggplot(
+  # set mappings for each layer
+  data = sixties, 
+  aes(
+    x = long, 
+    y = lat, 
+    frame = YEAR,
+    group = group
   )
-#plot(p1950)
-
-# Better color scale
-library(RColorBrewer)
-col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
-col.pal <- rev(col.pal) # reverse color order
-col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
-p1950 <- p1950 +
+) +
+  # cartogram
+  geom_polygon(
+    aes (fill = bins)
+  ) +
+  # cartogram outlines
+  geom_path(
+    color = "#5e5e5e", #2b2b2b
+    size = 0.5
+  ) +
+  # constrain proportions
+  coord_fixed() +
+  # add nice theme
+  theme_map() +
+  # color scale
   scale_fill_manual(
     values = col.pal,
     name = "Catch (tonnes)",
     drop = FALSE
+  ) +
+  # labels
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Catch in",
+    caption = "FAO + SAU data"
   )
-plot(p1950)
-
-# ----------------
-# 06 ANIMATE
-# ----------------
-
-# Create smoothly animated maps between each year.
-# You will need the tweenr library and gganimate library. 
-# For gganimate to run correctly, you need to manually install ImageMagick: 
-# https://www.imagemagick.org/script/index.php 
-# For OS X, this is super easy with homebrew:'brew install ImageMagick'
-
-if (!require(tweenr)) {
-  install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
-  require(tweenr)
-}
-
-# install_github("dgrtwo/gganimate")
-library(gganimate)
-
-# Process: convert all spdfs back into regular dfs in a loop, create 'carto_id' column w the dfname, chuck em into giant tidied_cartos df. 
-
+#plot(sixp)
+gganimate(sixp)

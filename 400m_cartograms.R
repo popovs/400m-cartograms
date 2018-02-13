@@ -91,10 +91,11 @@ wo <- gSimplify(World, 10000)
 wrld_simpl <- SpatialPolygonsDataFrame(wo, World@data, match.ID=F)
 rm(World)
 rm(wo)
-rm(wrld_simpl)
 
 world <- wrld_simpl[wrld_simpl$name != "Antarctica",c("iso_a3", "name", "continent")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 world <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Transform back to EPSG 4326 projection
+
+rm(wrld_simpl)
 
 #world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
@@ -139,13 +140,12 @@ if (!require(devtools)) {
   require(devtools)
 }
 # Install the two Github packages
-install_github('omegahat/Rcartogram') 
+#install_github('omegahat/Rcartogram') 
 # Wait for installation, and then:
-install_github('chrisbrunsdon/getcartr', subdir='getcartr')
+#install_github('chrisbrunsdon/getcartr', subdir='getcartr')
 
 library(Rcartogram)
 library(getcartr)
-
 
 
 # ----------------
@@ -180,6 +180,35 @@ lapply(years, fishtogram)
 # ----------------
 # 05 PLOT
 # ----------------
+
+# Spatial*DataFrames need to be "tidied" into regular dataframes using the broom library to be ggplot-friendly.
+tidy_cartos <- list() # Empty list to contain all tidied cartograms
+# Tidy up each cartogram and put them all into tidy_cartos list
+for (year in years) {
+  ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
+  ggdata <- tidy(ggdata) # Tidy 
+  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "id")], by="id", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
+  ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
+  ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
+  ggdata$bins <- cut(
+    ggdata$CATCH, 
+    breaks = bins, 
+    labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
+    right = FALSE
+  )
+  dfname <- paste0("tidy", year)
+  print(dfname)
+  tidy_cartos[[dfname]] <- ggdata # Add to list
+  rm(dfname)
+  rm(year)
+}
+
+# Merge every single tidied cartogram in this list into one giant dataframe:
+all_maps <- dplyr::bind_rows(tidy_cartos)
+
+# ********************************
+# ORIGINAL GGPLOT TESTING II BELOW
+# ********************************
 
 carto1950 <- carto_maps[["carto1950"]] # Pull one map for testing
 
@@ -275,5 +304,23 @@ p1950 <- p1950 +
   )
 plot(p1950)
 
+# ----------------
+# 06 ANIMATE
+# ----------------
 
+# Create smoothly animated maps between each year.
+# You will need the tweenr library and gganimate library. 
+# For gganimate to run correctly, you need to manually install ImageMagick: 
+# https://www.imagemagick.org/script/index.php 
+# For OS X, this is super easy with homebrew:'brew install ImageMagick'
+
+if (!require(tweenr)) {
+  install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
+  require(tweenr)
+}
+
+# install_github("dgrtwo/gganimate")
+library(gganimate)
+
+# Process: convert all spdfs back into regular dfs in a loop, create 'carto_id' column w the dfname, chuck em into giant tidied_cartos df. 
 

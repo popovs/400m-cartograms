@@ -81,19 +81,17 @@ for (year in years){
 # 03 PREPARE GIS DATA
 # ----------------
 
-# data("wrld_simpl") # Simple world dataset from maptools
-data(World, package="tmap") # Trying out suggestion on Github here (https://github.com/sjewo/cartogram/issues/7), using a simplified world map to make things a bit faster
-wo <- gSimplify(World, 10000)
-wrld_simpl <- SpatialPolygonsDataFrame(wo, World@data, match.ID=F)
-rm(World)
+data("wrld_simpl") # Simple world dataset from maptools
+wrld_simpl <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
+wrld_xtra_simpl <- gSimplify(wrld_simpl, 10000, topologyPreserve = TRUE) # Simplify to make cartogram calcs faster
+world <- SpatialPolygonsDataFrame(wrld_xtra_simpl, wrld_simpl@data, match.ID=F) # Merge simplified spatial data w original map attribute data
+rm(wrld_xtra_simpl)
+rm(wrld_simpl)
 
-world <- wrld_simpl[wrld_simpl$name != "Antarctica",c("iso_a3", "name", "continent")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
-world <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Transform back to EPSG 4326 projection
+world <- world[world$NAME != "Antarctica", c("ISO3", "NAME", "REGION")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
 
 #world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
-
-names(world) <- c("ISO3", "NAME", "REGION")
 
 # NOW CREATE MERGE LOOP
 # Merge catch data with GIS data
@@ -281,10 +279,11 @@ theme_map <- function(...) {
 # Full plot, DISCRETE COLOR SCALE
 p <- ggplot(
   # set mappings for each layer
-  data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
+  #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
   #data = tidy_cartos[["tidy1990"]],
   #data = map_years[["map1990"]],
+  data = sixties,
   aes(
     x = long, 
     y = lat, 

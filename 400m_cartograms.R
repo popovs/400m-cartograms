@@ -83,7 +83,7 @@ for (year in years){
 
 data("wrld_simpl") # Simple world dataset from maptools
 wrld_simpl <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
-wrld_xtra_simpl <- gSimplify(wrld_simpl, 10000, topologyPreserve = TRUE) # Simplify to make cartogram calcs faster
+wrld_xtra_simpl <- gSimplify(wrld_simpl, 15000, topologyPreserve = TRUE) # Simplify to make cartogram calcs faster
 world <- SpatialPolygonsDataFrame(wrld_xtra_simpl, wrld_simpl@data, match.ID=F) # Merge simplified spatial data w original map attribute data
 rm(wrld_xtra_simpl)
 rm(wrld_simpl)

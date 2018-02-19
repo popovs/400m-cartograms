@@ -3,8 +3,8 @@
 
 # 01 This Datacarpentry workshop is overall super helpful for any R GIS: http://www.datacarpentry.org/R-spatial-raster-vector-lesson/ 
 # 02 This GitHub.io page goes through basic vector/shapefile plotting: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
-# 03 Plotting cartograms using R: http://trucvietle.me/r/tutorial/2016/12/18/cartogram-plotting-using-r.html (outdated/no good?)
-# 04 Awesome Africa cartogram animation: https://www.r-graph-gallery.com/a-smooth-transition-between-chloropleth-and-cartogram/ 
+# 03 Plotting cartograms using R: http://trucvietle.me/r/tutorial/2016/12/18/cartogram-plotting-using-r.html
+# 04 Africa cartogram animation: https://www.r-graph-gallery.com/a-smooth-transition-between-chloropleth-and-cartogram/ 
 
 # ----------------
 # 01 INITIAL SETUP
@@ -107,23 +107,15 @@ for (year in years) {
     map_years[[dfname]] <- merge(world, fishing_year, by="NAME", all=TRUE) # merge world dataset w each year within fishing_years list
     map_years[[dfname]]@data$CATCH[is.na(map_years[[dfname]]@data$CATCH)] <- 0 # Fill NAs with 0s, otherwise any countries w NA just won't show up in the cartogram
     map_years[[dfname]]@data$CATCH[map_years[[dfname]]@data$CATCH < 1] <- 1 # Fill 0s with 1s so cartogram actually works 
+    map_years[[dfname]]@data$YEAR[is.na(map_years[[dfname]]@data$YEAR)] <- year # fill NA years with the current year
     rm(dfname) # remove the floaters
     rm(year)
 }
 
-# ----------------
-# 04 CARTOGRAM LOOP
-# ----------------
 
-# Create shapefiles directory - only need to do this once
-dir.create("Shapefiles")
-
-# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! 
-carto_maps <- list() # Empty list that will contain cartogram output. 
-
-# ----------------
-# FFTW CARTOGRAMS
-# ----------------
+# *****************
+# FFTW INSTALLATION
+# *****************
 
 # THIS IS A HOT MESS ON WINDOWS BUT MAKES NICE CARTOGRAMS. MUCH easier if you're working on a Unix system.
 # HOW TO GET FFTW/RCARTOGRAM TO WORK ON WINDOWS: (most recent) https://github.com/Geoff99/Rcartogram/blob/WindowsInstall/vignettes/README.WindowsInstall.Tutorial.Rmd 
@@ -149,11 +141,22 @@ if (!require(devtools)) {
 # If you get an error saying something like "C:/Rtools/mingw_64/bin/gcc: not found", see my comment on this answer HERE: https://stackoverflow.com/questions/33103203/rtools-is-not-being-detected-from-rstudio/44035904#44035904 
 
 # Wait for installation, and then:
-install_github('chrisbrunsdon/getcartr', subdir='getcartr')
+# install_github('chrisbrunsdon/getcartr', subdir='getcartr')
 
 # Now load these bad boys that have been causing so much grief:
 library(Rcartogram)
 library(getcartr)
+
+
+# ----------------
+# 04 CARTOGRAM LOOP
+# ----------------
+
+# Create shapefiles directory - only need to do this once
+dir.create("Shapefiles")
+
+# Now make the cartograms, fill the carto_maps dataframe with them, and save them as shapefiles! 
+carto_maps <- list() # Empty list that will contain cartogram output.
 
 fishtogram <- function(year) {
   print(year)
@@ -161,7 +164,7 @@ fishtogram <- function(year) {
   map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
   carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
   rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
-  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto1950@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
+  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
   plot(carto_maps[[dfname]], main=dfname) # plot it
   print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
@@ -175,8 +178,161 @@ fishtogram(2014)
 lapply(years, fishtogram)
 
 # ----------------
-# 05 PLOT
+# 05 PLOT & ANIMATE
 # ----------------
+
+# Create smoothly animated maps between each year.
+# You will need the tweenr library and gganimate library. 
+# For gganimate to run correctly, you need to manually install ImageMagick: 
+# https://www.imagemagick.org/script/index.php 
+# NOTE on Windows bc Windows just REALLY doesn't want to cooperate with this you need to tick the "Install legacy components" checkbox when doing installation otherwise gganimate won't work. 
+
+# Or, you can install from within R:
+#library(installr); install.ImageMagick(URL = "https://www.imagemagick.org/script/download.php")
+
+if (!require(tweenr)) {
+  install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
+  require(tweenr)
+}
+
+# If gganimate doens't work after installing ImageMagick & gganimate, you may need to restart R.  
+# install_github("dgrtwo/gganimate")
+library(gganimate)
+
+# Spatial*DataFrames need to be "tidied" into regular dataframes using the broom library to be ggplot-friendly.
+tidy_cartos <- list() # Empty list to contain all tidied cartograms
+# Set bins for each cartogram (for later plotting)
+bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
+# Tidy up each cartogram and put them all into tidy_cartos list
+for (year in years) {
+  ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
+  ggdata <- tidy(ggdata) # Tidy 
+  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "id")], by="id", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
+  ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
+  ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
+  ggdata$bins <- cut(
+    ggdata$CATCH, 
+    breaks = bins, 
+    labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
+    right = FALSE
+  )
+  dfname <- paste0("tidy", year)
+  print(dfname)
+  tidy_cartos[[dfname]] <- ggdata # Add to list
+  rm(dfname)
+  rm(year)
+  rm(ggdata)
+}
+
+# Merge every single tidied cartogram in this list into one giant dataframe:
+all_maps <- dplyr::bind_rows(tidy_cartos)
+
+# Test animation on subset 
+sixties <- all_maps[1959 < all_maps$YEAR & all_maps$YEAR <1970, ]
+sixties$coords <- paste(sixties$long,sixties$lat) # Create coordinates column for each unique coordinate. We're animating between coordinates per year. 
+sixties$ease <- "quadratic-in-out"
+# Tween this subset (totally does not work)
+tw_sixties <- tween_elements(data = sixties, time = 'YEAR', group = 'coords', ease ='ease', nframes=15)
+
+# Make nice ggplot theme
+if (!require(showtext)) {
+  install.packages("showtext", repos = "http://cran.stat.sfu.ca/")
+  require(showtext)
+}
+font_add_google("Karla", "karla") # Add nice google font
+showtext_auto() # Tell R to use showtext to render google font
+
+# If windows is being crap, then:
+# Manually downloaded Karla https://fonts.google.com/specimen/Karla 
+windowsFonts(Karla=windowsFont("Karla"))
+
+# **********************
+# DISCRETE COLOR SCALE
+# **********************
+
+# Better color scale
+library(RColorBrewer)
+col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
+col.pal <- rev(col.pal) # reverse color order
+col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
+
+theme_map <- function(...) {
+  theme_minimal() +
+    theme(
+      text = element_text(family = "Karla", color = "#22211d"),
+      axis.line = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      # panel.grid.minor = element_line(color = "#ebebe5", size = 0.2),
+      #panel.grid.major = element_line(color = "#ebebe5", size = 0.2),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.background = element_rect(fill = "#f5f5f2", color = NA), 
+      panel.background = element_rect(fill = "#f5f5f2", color = NA), 
+      legend.background = element_rect(fill = "#f5f5f2", color = NA),
+      panel.border = element_blank(),
+      ...
+    ) 
+}
+
+# Full plot, DISCRETE COLOR SCALE
+p <- ggplot(
+  # set mappings for each layer
+  data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
+  #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
+  #data = tidy_cartos[["tidy1990"]],
+  #data = map_years[["map1990"]],
+  aes(
+    x = long, 
+    y = lat, 
+    frame = YEAR,
+    group = group
+    )
+  ) +
+  # cartogram
+  geom_polygon(
+    aes (fill = bins)
+  ) +
+  # cartogram outlines
+  geom_path(
+    color = "#5e5e5e", #2b2b2b
+    size = 0.5
+  ) +
+  # country labels
+  #geom_text(aes(label = NAME)) +
+  # constrain proportions
+  coord_fixed() +
+  # add nice theme
+  theme_map() +
+  # color scale
+  scale_fill_manual(
+    values = col.pal,
+    name = "Catch (tonnes)",
+    drop = FALSE
+  ) +
+  # labels
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "FAO + SAU catch in",
+    caption = expression(paste("Victorero ", italic("et al."), " 2018"))
+  )
+
+plot(p)
+
+# Will take a minute or two
+gganimate(p,  interval=0.2)
+
+#"discrete-FAO-SAU-animation.gif",
+
+
+
+# ****************
+# ORIGINAL GGPLOT TESTING II BELOW
+# ****************
 
 carto1950 <- carto_maps[["carto1950"]] # Pull one map for testing
 

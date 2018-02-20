@@ -48,6 +48,10 @@ if (!require(maptools)) {
   install.packages("maptools", repos = "http://cran.stat.sfu.ca/")
   require(maptools)
 }
+if (!require(rmapshaper)) {
+  install.packages("rmapshaper", repos = "http://cran.stat.sfu.ca/")
+  require(rmapshaper)
+}
 if (!require(broom)) {
   install.packages("broom", repos = "http://cran.stat.sfu.ca/")
   require(broom)
@@ -82,13 +86,10 @@ for (year in years){
 # ----------------
 
 data("wrld_simpl") # Simple world dataset from maptools
-wrld_simpl <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
-wrld_xtra_simpl <- gSimplify(wrld_simpl, 15000, topologyPreserve = TRUE) # Simplify to make cartogram calcs faster
-world <- SpatialPolygonsDataFrame(wrld_xtra_simpl, wrld_simpl@data, match.ID=F) # Merge simplified spatial data w original map attribute data
-rm(wrld_xtra_simpl)
-rm(wrld_simpl)
-
+world <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
 world <- world[world$NAME != "Antarctica", c("ISO3", "NAME", "REGION")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+world <- ms_simplify(world, keep = 0.3) # Simplify geometries using rmapshaper. Might need to add 'keep_shapes=TRUE' to prevent deletion of small features if this creates merging issues later down the road.
+rm(wrld_simpl)
 
 #world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.

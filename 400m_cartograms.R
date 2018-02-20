@@ -320,7 +320,7 @@ p <- ggplot(
     x = NULL,
     y = NULL,
     title = "FAO + SAU catch in",
-    caption = expression(paste("Victorero ", italic("et al."), " 2018"))
+    caption = expression(paste("Victorero ", italic("et al."), " (2018). 'Out of sight, but within reach: A Global History of Bottom-Trawled Fisheries from >400m depth.'"))
   )
 
 #plot(p)

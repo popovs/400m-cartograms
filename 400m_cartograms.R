@@ -76,6 +76,7 @@ for (year in years){
   #print(dfname)
   fishing_years[[dfname]] <- data.frame(fishing_data[fishing_data$YEAR == year,]) # create and assign these new dataframes the above created dataframe names (dfname), then populate it with rows that contain the correct <year>. THEN, chuck all these dataframes into one fishing_years list. 
   rm(dfname) # remove the floaters
+  rm(fishing_year)
   rm(year)
 }
 
@@ -246,6 +247,7 @@ theme_map <- function(...) {
   theme_minimal() +
     theme(
       text = element_text(family = "Karla", color = "#22211d"),
+      plot.title = element_text(size = 22),
       axis.line = element_blank(),
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
@@ -309,7 +311,7 @@ p <- ggplot(
 #plot(p)
 
 # Will take a minute or two
-gganimate(p, interval=0.2, ani.width=1000, ani.height=800)
+gganimate(p, "discrete-FAO-SAU-animation.gif", interval=0.2, ani.width=1000, ani.height=800)
 #"discrete-FAO-SAU-animation.gif",
 
 # **********************

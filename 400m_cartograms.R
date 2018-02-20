@@ -163,9 +163,6 @@ fishtogram <- function(year) {
   dfname <- paste0("carto",year) # name of cartogram being made
   map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
   carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
-  #rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
-  #carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
-  #carto_maps[[dfname]]@data$id <<- rownames(carto_maps[[dfname]]@data)
   plot(carto_maps[[dfname]], main=dfname) # plot it
   print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
@@ -210,11 +207,6 @@ tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
   ggdata <- tidy(ggdata, region = "ISO3") # Tidy; tell it to use ISO3 as unique id
   names(ggdata)[names(ggdata) == 'id'] <- "ISO3" # rename id column to ISO3
-  
-  # THIS IS IN HERE FOR THE COMMIT RECORD:
-  # For whateverass reason the id column is the ISO code so rename it to that LATER EDIT: THIS PREVIOUSLY WORKED AND NOW IT'S NOT WTF?? uuguhhhghh
-  # UPDATE: the root of this stupid fucking issue is the simplification algorithm at the top. even if I manually rename the rownames of the simplified world map, tidy for whatever(ass) reason uses the ORIGINAL rownames that ms_simplify spits out for the geometry. So even if I change the rownames of the simplified map, even if I change the rownames of the cartogram, tidy will ALWAYS create a stupid gotdamn column called 'id' that is filled with whatever rownames were first spat out by ms_simplify. 
-  # THIS IS FIXED BY SPECIFYING THE REGION IN THE TIDY FUNCTION. in this case, defining the region by 'region = "ISO3"'. 
   ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "ISO3")], by="ISO3", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
   ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
   ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
@@ -223,7 +215,7 @@ tidygram <- function(year) {
     breaks = bins, 
     labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
     right = FALSE
-  )
+    )
   dfname <- paste0("tidy", year)
   print(dfname)
   tidy_cartos[[dfname]] <<- ggdata # Add to list
@@ -340,107 +332,3 @@ plot(p)
 gganimate(p,  interval=0.2)
 
 #"discrete-FAO-SAU-animation.gif",
-
-
-
-# ****************
-# ORIGINAL GGPLOT TESTING II BELOW
-# ****************
-
-carto1950 <- carto_maps[["carto1950"]] # Pull one map for testing
-
-ggdata <- tidy(carto_maps[["carto1950"]])
-ggdata <- merge(x = ggdata, y = carto1950@data[,c("NAME","CATCH","id")], by="id", all.x=TRUE) # Join original country & catch data to tidied dataset by id column
-#ggdata <- merge(x = ggdata, y = fishing_data[,c("NAME", "CATCH")], by="NAME", all.x = TRUE) # This is messy, but merging with original dataset bc changed 0s to 1s in the cartogram plots to get them to work. Need 0s for plotting color scale. 
-ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NAs with 0
-
-ggdata <- arrange(ggdata, order) # tidy up again for fussy ggplot
-
-# Set bins
-bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
-ggdata$bins <- cut(
-  ggdata$CATCH, 
-  breaks = bins, 
-  labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
-  right = FALSE
-)
-
-# Basic plot
-p1950 <- ggplot(
-  # set mappings for each layer
-  data = ggdata, 
-  aes(
-    x = long, 
-    y = lat, 
-    group = group
-  )
-) +
-  # cartogram
-  geom_polygon(
-    aes (fill = bins)
-  ) +
-  # cartogram outlines
-  geom_path(
-    color = "#5e5e5e", #2b2b2b
-    size = 0.5
-  ) +
-  # constrain proportions
-  coord_fixed()
-#plot(p1950)
-
-# Now make the theme nice
-library(showtext)
-font_add_google("Karla", "karla") # Add nice google font
-showtext_auto() # Tell R to use showtext to render google font
-# Nice fonts don't work >:(
-
-#Manually downloaded Karla
-windowsFonts(Karla=windowsFont("Karla"))
-
-theme_map <- function(...) {
-  theme_minimal() +
-    theme(
-      text = element_text(family = "Karla", color = "#22211d"),
-      axis.line = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      # panel.grid.minor = element_line(color = "#ebebe5", size = 0.2),
-      #panel.grid.major = element_line(color = "#ebebe5", size = 0.2),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      plot.background = element_rect(fill = "#f5f5f2", color = NA), 
-      panel.background = element_rect(fill = "#f5f5f2", color = NA), 
-      legend.background = element_rect(fill = "#f5f5f2", color = NA),
-      panel.border = element_blank(),
-      ...
-    )
-}
-
-p1950 <- p1950 + 
-  theme_map() +
-  labs(
-    x = NULL,
-    y = NULL,
-    title = "1950",
-    caption = "FAO + SAU data"
-  )
-#plot(p1950)
-
-# Better color scale
-library(RColorBrewer)
-col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
-col.pal <- rev(col.pal) # reverse color order
-col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
-p1950 <- p1950 +
-  scale_fill_manual(
-    values = col.pal,
-    name = "Catch (tonnes)",
-    drop = FALSE
-  )
-plot(p1950)
-
-
-

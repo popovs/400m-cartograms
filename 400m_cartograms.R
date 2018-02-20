@@ -88,7 +88,8 @@ for (year in years){
 data("wrld_simpl") # Simple world dataset from maptools
 world <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
 world <- world[world$NAME != "Antarctica", c("ISO3", "NAME", "REGION")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
-world <- ms_simplify(world, keep = 0.3) # Simplify geometries using rmapshaper. Might need to add 'keep_shapes=TRUE' to prevent deletion of small features if this creates merging issues later down the road.
+world <- ms_simplify(world, keep = 0.3, keep_shapes=TRUE) # Simplify geometries using rmapshaper. Might need to add 'keep_shapes=TRUE' to prevent deletion of small features if this creates merging issues later down the road.
+rownames(world@data) <- world@data$ISO3
 rm(wrld_simpl)
 
 #world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
@@ -207,8 +208,13 @@ bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything w
 
 tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
-  ggdata <- tidy(ggdata) # Tidy 
-  names(ggdata)[names(ggdata) == 'id'] <- "ISO3" # For whateverass reason the id column is the ISO code so rename it to that
+  ggdata <- tidy(ggdata, region = "ISO3") # Tidy; tell it to use ISO3 as unique id
+  names(ggdata)[names(ggdata) == 'id'] <- "ISO3" # rename id column to ISO3
+  
+  # THIS IS IN HERE FOR THE COMMIT RECORD:
+  # For whateverass reason the id column is the ISO code so rename it to that LATER EDIT: THIS PREVIOUSLY WORKED AND NOW IT'S NOT WTF?? uuguhhhghh
+  # UPDATE: the root of this stupid fucking issue is the simplification algorithm at the top. even if I manually rename the rownames of the simplified world map, tidy for whatever(ass) reason uses the ORIGINAL rownames that ms_simplify spits out for the geometry. So even if I change the rownames of the simplified map, even if I change the rownames of the cartogram, tidy will ALWAYS create a stupid gotdamn column called 'id' that is filled with whatever rownames were first spat out by ms_simplify. 
+  # THIS IS FIXED BY SPECIFYING THE REGION IN THE TIDY FUNCTION. in this case, defining the region by 'region = "ISO3"'. 
   ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "ISO3")], by="ISO3", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
   ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
   ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
@@ -288,9 +294,10 @@ p <- ggplot(
   # set mappings for each layer
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
-  data = tidy_cartos[["tidy1990"]],
+  #data = tidy_cartos[["tidy1990"]],
   #data = map_years[["map1990"]],
   #data = sixties,
+  data = all_maps,
   aes(
     x = long, 
     y = lat, 

@@ -48,9 +48,9 @@ if (!require(maptools)) {
   install.packages("maptools", repos = "http://cran.stat.sfu.ca/")
   require(maptools)
 }
-if (!require(tmap)) {
-  install.packages("tmap", repos = "http://cran.stat.sfu.ca/")
-  require(tmap)
+if (!require(rmapshaper)) {
+  install.packages("rmapshaper", repos = "http://cran.stat.sfu.ca/")
+  require(rmapshaper)
 }
 if (!require(broom)) {
   install.packages("broom", repos = "http://cran.stat.sfu.ca/")
@@ -85,22 +85,15 @@ for (year in years){
 # 03 PREPARE GIS DATA
 # ----------------
 
-# data("wrld_simpl") # Simple world dataset from maptools
-data(World, package="tmap") # Trying out suggestion on Github here (https://github.com/sjewo/cartogram/issues/7), using a simplified world map to make things a bit faster
-wo <- gSimplify(World, 10000)
-wrld_simpl <- SpatialPolygonsDataFrame(wo, World@data, match.ID=F)
-rm(World)
-rm(wo)
-
-world <- wrld_simpl[wrld_simpl$name != "Antarctica",c("iso_a3", "name", "continent")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
-world <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Transform back to EPSG 4326 projection
-
+data("wrld_simpl") # Simple world dataset from maptools
+world <- spTransform(wrld_simpl, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +no_defs")) # Add EPSG 4326 projection
+world <- world[world$NAME != "Antarctica", c("ISO3", "NAME", "REGION")] # World GIS SpatialPolygonsDataFrame (spdf), minus Antarctica, minus irrelevant columns (hopefully subregion is actually irrelevant loooool)
+world <- ms_simplify(world, keep = 0.3, keep_shapes=TRUE) # Simplify geometries using rmapshaper. Might need to add 'keep_shapes=TRUE' to prevent deletion of small features if this creates merging issues later down the road.
+rownames(world@data) <- world@data$ISO3
 rm(wrld_simpl)
 
 #world2 <- spTransform(world, CRS("+proj=eqc +ellps=WGS84 +datum=WGS84 +lon_0=10 +no_defs")) # maybe eventually shift central meridian over to +10, so that Chukchi peninsula is not chopped off Russia. 
 #<object>@proj4string # Check CRS of a Spatial*DataFrame object.
-
-names(world) <- c("ISO3", "NAME", "REGION")
 
 # NOW CREATE MERGE LOOP
 # Merge catch data with GIS data
@@ -163,8 +156,6 @@ fishtogram <- function(year) {
   dfname <- paste0("carto",year) # name of cartogram being made
   map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
   carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
-  rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
-  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
   plot(carto_maps[[dfname]], main=dfname) # plot it
   print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
@@ -191,6 +182,10 @@ if (!require(tweenr)) {
   install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
   require(tweenr)
 }
+if (!require(animation)) {
+  install.packages("animation", repos = "http://cran.stat.sfu.ca/")
+  require(animation)
+}
 
 # install_github("dgrtwo/gganimate")
 library(gganimate)
@@ -199,11 +194,13 @@ library(gganimate)
 tidy_cartos <- list() # Empty list to contain all tidied cartograms
 # Set bins for each cartogram (for later plotting)
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
+
 # Tidy up each cartogram and put them all into tidy_cartos list
-for (year in years) {
+tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
-  ggdata <- tidy(ggdata) # Tidy 
-  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "id")], by="id", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
+  ggdata <- tidy(ggdata, region = "ISO3") # Tidy; tell it to use ISO3 as unique id
+  names(ggdata)[names(ggdata) == 'id'] <- "ISO3" # rename id column to ISO3
+  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "ISO3")], by="ISO3", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
   ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
   ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
   ggdata$bins <- cut(
@@ -212,23 +209,20 @@ for (year in years) {
     labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
     right = FALSE
   )
+  ggdata <- ggdata[,-1] # Remove first column w ISO code - tweenr has a bug where the first column must have numbers & no strings in order to work
   dfname <- paste0("tidy", year)
   print(dfname)
-  tidy_cartos[[dfname]] <- ggdata # Add to list
-  rm(dfname)
-  rm(year)
-  rm(ggdata)
+  tidy_cartos[[dfname]] <<- ggdata # Add to list
 }
 
-# Merge every single tidied cartogram in this list into one giant dataframe:
+# loop through
+lapply(years, tidygram)
+
+# Merge every single tidied cartogram in this list into one giant dataframe (for non-tweened animation):
 all_maps <- dplyr::bind_rows(tidy_cartos)
 
-# Test animation on subset 
-sixties <- all_maps[1959 < all_maps$YEAR & all_maps$YEAR <1970, ]
-sixties$coords <- paste(sixties$long,sixties$lat) # Create coordinates column for each unique coordinate. We're animating between coordinates per year. 
-sixties$ease <- "quadratic-in-out"
-# Tween this subset (totally does not work)
-#tw_sixties <- tween_elements(data = sixties, time = 'YEAR', group = 'coords', ease ='ease', nframes=15)
+# Tween above tidied dfs for smoother animation (not quite working yet):
+tw <- tween_states(data = tidy_cartos, tweenlength = 1, statelength = 1, ease = 'quadratic-in-out', nframes=15)
 
 # Make nice ggplot theme
 if (!require(showtext)) {
@@ -273,7 +267,9 @@ theme_map <- function(...) {
 # Full plot, DISCRETE COLOR SCALE
 p <- ggplot(
   # set mappings for each layer
-  data = all_maps, 
+  #data = tw %>% filter(.frame==110) %>% arrange(order), # single frame of tweened maps; color bins are misordered but show up on any individual frame
+  #data = tw, # tweened maps - color bins do not work & colors only actually show up on last frame of gganimate??
+  data = all_maps, # untweened maps - everything works fine
   aes(
     x = long, 
     y = lat, 
@@ -290,6 +286,8 @@ p <- ggplot(
     color = "#5e5e5e", #2b2b2b
     size = 0.5
   ) +
+  # country labels
+  #geom_text(aes(label = NAME)) +
   # constrain proportions
   coord_fixed() +
   # add nice theme
@@ -308,9 +306,11 @@ p <- ggplot(
     caption = expression(paste("Victorero ", italic("et al."), " 2018"))
   )
 
-# Will take a minute or two
-gganimate(p, "discrete-FAO-SAU-animation.gif", interval=0.2)
+#plot(p)
 
+# Will take a minute or two
+gganimate(p, interval=0.2, ani.width=1000, ani.height=800)
+#"discrete-FAO-SAU-animation.gif",
 
 # **********************
 # GRADIENT COLOR SCALE
@@ -343,14 +343,15 @@ p2 <- ggplot(
   scale_fill_gradientn(
     colours = col.pal,
     name = "Catch (tonnes)",
-    limits = c(0, 407719)
+    limits = c(0, 407719),
+    guide = "colourbar"
   ) +
   # labels
   labs(
     x = NULL,
     y = NULL,
     title = "FAO + SAU catch in",
-    caption = expression(paste("Victorero", italic("et al."), "2018"))
+    caption = expression(paste("Victorero ", italic("et al."), " 2018"))
   )
 
 # Will take a minute or two

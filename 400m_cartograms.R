@@ -161,8 +161,9 @@ fishtogram <- function(year) {
   dfname <- paste0("carto",year) # name of cartogram being made
   map_year <- get(paste0("map", year), map_years) # Create 'map_year' and fill it with one SpatialPolygonsDataFrame of a year of fishing/country data pulled from the list of spdf's 'map_years'
   carto_maps[[dfname]] <<- quick.carto(map_year, map_year@data$CATCH, blur = 1) # Create cartogram named 'dfname', chuck it into the carto_maps list
-  rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
-  carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
+  #rownames(carto_maps[[dfname]]@data) <<- 1:nrow(carto_maps[[dfname]]@data) # Reset row names/numbers index
+  #carto_maps[[dfname]]@data$id <<- seq.int(nrow(carto_maps[[dfname]]@data)) # Create ID column based on index of dataframe; this is what becomes the "id" column when you tidy the dataset for ggplot. We'll then use this id column to join the catch data from our original dataset to the tidied ggplot dataset later.
+  #carto_maps[[dfname]]@data$id <<- rownames(carto_maps[[dfname]]@data)
   plot(carto_maps[[dfname]], main=dfname) # plot it
   print(paste("Finished", dfname, "at", Sys.time())) # print time finished cartogram
   writeOGR(obj = carto_maps[[dfname]], dsn = "Shapefiles", layer = dfname, driver = "ESRI Shapefile", overwrite_layer=TRUE) # Save shapefile, overwrite old ones if necessary
@@ -202,10 +203,13 @@ tidy_cartos <- list() # Empty list to contain all tidied cartograms
 # Set bins for each cartogram (for later plotting)
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
 # Tidy up each cartogram and put them all into tidy_cartos list
-for (year in years) {
+#for (year in years) 
+  
+tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
   ggdata <- tidy(ggdata) # Tidy 
-  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "id")], by="id", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
+  names(ggdata)[names(ggdata) == 'id'] <- "ISO3" # For whateverass reason the id column is the ISO code so rename it to that
+  ggdata <- merge(x = ggdata, y = carto_maps[[paste0("carto",year)]]@data[,c("NAME","YEAR","CATCH", "ISO3")], by="ISO3", all.x=TRUE) # Join original country, year & catch data to tidied dataset by id column
   ggdata$CATCH[is.na(ggdata$CATCH)] <- 0 # replace NA catches with 0
   ggdata$YEAR[is.na(ggdata$YEAR)] <- year # replace NA years with current year
   ggdata$bins <- cut(
@@ -216,7 +220,7 @@ for (year in years) {
   )
   dfname <- paste0("tidy", year)
   print(dfname)
-  tidy_cartos[[dfname]] <- ggdata # Add to list
+  tidy_cartos[[dfname]] <<- ggdata # Add to list
   rm(dfname)
   rm(year)
   rm(ggdata)
@@ -281,9 +285,9 @@ p <- ggplot(
   # set mappings for each layer
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
-  #data = tidy_cartos[["tidy1990"]],
+  data = tidy_cartos[["tidy1990"]],
   #data = map_years[["map1990"]],
-  data = sixties,
+  #data = sixties,
   aes(
     x = long, 
     y = lat, 

@@ -219,9 +219,6 @@ tidygram <- function(year) {
   dfname <- paste0("tidy", year)
   print(dfname)
   tidy_cartos[[dfname]] <<- ggdata # Add to list
-  rm(dfname)
-  rm(year)
-  rm(ggdata)
 }
 
 # loop through

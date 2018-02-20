@@ -216,6 +216,7 @@ tidygram <- function(year) {
     labels = c("0", "1-5000", "5001 - 20 000", "20 001 - 50 000", "50 001 - 100 000", "100 001 - 200 000", "200 001 - 300 001", "300 001 - 407719"),
     right = FALSE
     )
+  ggdata <- ggdata[,-1] # Remove first column w ISO code - tweenr has a bug where the first column must have numbers & no strings in order to work
   dfname <- paste0("tidy", year)
   print(dfname)
   tidy_cartos[[dfname]] <<- ggdata # Add to list
@@ -224,15 +225,11 @@ tidygram <- function(year) {
 # loop through
 lapply(years, tidygram)
 
-# Merge every single tidied cartogram in this list into one giant dataframe:
+# Merge every single tidied cartogram in this list into one giant dataframe (for non-tweened animation):
 all_maps <- dplyr::bind_rows(tidy_cartos)
 
-# Test animation on subset 
-sixties <- all_maps[1959 < all_maps$YEAR & all_maps$YEAR <1970, ]
-sixties$coords <- paste(sixties$long,sixties$lat) # Create coordinates column for each unique coordinate. We're animating between coordinates per year. 
-sixties$ease <- "quadratic-in-out"
-# Tween this subset (totally does not work)
-tw_sixties <- tween_elements(data = sixties, time = 'YEAR', group = 'coords', ease ='ease', nframes=15)
+# Tween above tidied dfs for smoother animation (not quite working yet):
+tw <- tween_states(data = tidy_cartos, tweenlength = 1, statelength = 1, ease = 'quadratic-in-out', nframes=15)
 
 # Make nice ggplot theme
 if (!require(showtext)) {
@@ -285,7 +282,7 @@ p <- ggplot(
   #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
   #data = tidy_cartos[["tidy1990"]],
   #data = map_years[["map1990"]],
-  #data = sixties,
+  #data = states_sixties %>% filter(.frame==110) %>% arrange(order),
   data = all_maps,
   aes(
     x = long, 

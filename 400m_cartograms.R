@@ -192,6 +192,10 @@ if (!require(tweenr)) {
   install.packages("tweenr", repos = "http://cran.stat.sfu.ca/")
   require(tweenr)
 }
+if (!require(animation)) {
+  install.packages("animation", repos = "http://cran.stat.sfu.ca/")
+  require(animation)
+}
 
 # If gganimate doens't work after installing ImageMagick & gganimate, you may need to restart R.  
 # install_github("dgrtwo/gganimate")
@@ -201,8 +205,8 @@ library(gganimate)
 tidy_cartos <- list() # Empty list to contain all tidied cartograms
 # Set bins for each cartogram (for later plotting)
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
-# Tidy up each cartogram and put them all into tidy_cartos list
 
+# Tidy up each cartogram and put them all into tidy_cartos list
 tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
   ggdata <- tidy(ggdata, region = "ISO3") # Tidy; tell it to use ISO3 as unique id
@@ -249,8 +253,8 @@ windowsFonts(Karla=windowsFont("Karla"))
 
 # Better color scale
 library(RColorBrewer)
-col.pal <- brewer.pal(7, "Spectral") # Add nice Yellow-green-blue palette for colored legend items
-col.pal <- rev(col.pal) # reverse color order
+col.pal <- brewer.pal(7, "Spectral") # Add nice palette for colored legend items
+col.pal <- rev(col.pal) # reverse color order so blue is lowest; red is highest
 col.pal <- c("#b7b7b7", col.pal) # Add grey to palette for 0 catch legend items
 
 theme_map <- function(...) {
@@ -278,12 +282,9 @@ theme_map <- function(...) {
 # Full plot, DISCRETE COLOR SCALE
 p <- ggplot(
   # set mappings for each layer
-  #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$NAME == "Cyprus",],
-  #data = tidy_cartos[["tidy1990"]][tidy_cartos[["tidy1990"]]$bins == "1-5000",],
-  #data = tidy_cartos[["tidy1990"]],
-  #data = map_years[["map1990"]],
-  #data = states_sixties %>% filter(.frame==110) %>% arrange(order),
-  data = all_maps,
+  #data = tw %>% filter(.frame==110) %>% arrange(order), # single frame of tweened maps; color bins are misordered but show up on any individual frame
+  #data = tw, # tweened maps - color bins do not work & colors only actually show up on last frame of gganimate??
+  data = all_maps, # untweened maps - everything works fine
   aes(
     x = long, 
     y = lat, 
@@ -320,9 +321,9 @@ p <- ggplot(
     caption = expression(paste("Victorero ", italic("et al."), " 2018"))
   )
 
-plot(p)
+#plot(p)
 
 # Will take a minute or two
-gganimate(p,  interval=0.2)
+gganimate(p, "discrete-FAO-SAU-animation.gif", interval=0.2, ani.width=1000, ani.height=800)
 
 #"discrete-FAO-SAU-animation.gif",

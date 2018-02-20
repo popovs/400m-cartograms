@@ -203,8 +203,7 @@ tidy_cartos <- list() # Empty list to contain all tidied cartograms
 # Set bins for each cartogram (for later plotting)
 bins <- c(0, 2, 5000, 20000, 50000, 100000, 200000, 300000, 407719) # Anything with 1 catch in the dataset is actually binned as zero bc I changed all zeros to 1s for cartogram calculation
 # Tidy up each cartogram and put them all into tidy_cartos list
-#for (year in years) 
-  
+
 tidygram <- function(year) {
   ggdata <- get(paste0("carto", year), carto_maps) # Pull current year cartogram into ggdata
   ggdata <- tidy(ggdata) # Tidy 
@@ -225,6 +224,9 @@ tidygram <- function(year) {
   rm(year)
   rm(ggdata)
 }
+
+# loop through
+lapply(years, tidygram)
 
 # Merge every single tidied cartogram in this list into one giant dataframe:
 all_maps <- dplyr::bind_rows(tidy_cartos)
